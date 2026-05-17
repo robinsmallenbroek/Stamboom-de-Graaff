@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stamboom De Graaff</title>
+  <title>Stamboom de Graaff</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -586,8 +586,8 @@
 
 <header>
   <div class="header-brand">
-    <h1>Stamboom <em>De Graaff</em></h1>
-    <p>Familie De Graaff &middot; Batavia 1892 &mdash; heden</p>
+    <h1>Stamboom <em>de Graaff</em></h1>
+    <p>Familie de Graaff &middot; Batavia 1892 &mdash; heden</p>
   </div>
   <div class="view-toggle">
     <button id="btn-tree" class="active" onclick="showView('tree')">Stamboom</button>
@@ -625,7 +625,7 @@
 <div id="view-stats" class="view hidden">
   <div class="stats-scroll">
     <h2 class="st-h">Statistieken</h2>
-    <p class="st-sub" id="st-intro">Overzicht van de gedocumenteerde leden van de familie De Graaff</p>
+    <p class="st-sub" id="st-intro">Overzicht van de gedocumenteerde leden van de familie de Graaff</p>
 
     <div class="srow srow-4">
       <div class="sc"><div class="sn" id="s-total">—</div><div class="sl">Personen</div><div class="ss">gedocumenteerd</div></div>
@@ -1042,7 +1042,7 @@ function clearAllHighlights() {
   d3.select('#map-svg').selectAll('.pc-pulse-ring').remove();
   d3.select('#map-svg').selectAll('.marker-dot')
     .interrupt()
-    .attr('r', d => d ? Math.max(1.5, (_baseR[d.gen]||4) / Math.sqrt(_mapCurrentK)) : 4)
+    .attr('r', d => d ? Math.max(1, (_baseR[d.gen]||4) / _mapCurrentK) : 2)
     .attr('fill-opacity', d => d && !d.note ? 0.85 : 0)
     .attr('stroke-width', 1.5);
   // Timeline: remove arrow, remove glow, restore all bars
@@ -1433,13 +1433,13 @@ async function renderMap() {
     .attr('fill-opacity', d => d.note ? 0 : 0.85)
     .attr('stroke-dasharray', d => d.note ? '3,2.5' : null)
     .on('mouseover', function(ev, d) {
-      const r = Math.max(1.5, (baseR[d.gen] || 4) / Math.sqrt(currentK));
-      d3.select(this).attr('r', r + Math.max(1, 2.5 / Math.sqrt(currentK)));
+      const r = Math.max(1, (baseR[d.gen] || 4) / currentK);
+      d3.select(this).attr('r', r + Math.max(0.8, 2 / currentK));
       showTooltip(buildMapTooltip(d), ev.clientX, ev.clientY);
     })
     .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
     .on('mouseout', function(ev, d) {
-      d3.select(this).attr('r', Math.max(1.5, (baseR[d.gen] || 4) / Math.sqrt(currentK)));
+      d3.select(this).attr('r', Math.max(1, (baseR[d.gen] || 4) / currentK));
       hideTooltip();
     })
     .on('click', function(ev, d) {
@@ -1484,10 +1484,9 @@ async function renderMap() {
   const zoom = d3.zoom().scaleExtent([0.5, 100]).on('zoom', ev => {
     g.attr('transform', ev.transform);
     currentK = ev.transform.k;
-    const sqrtK = Math.sqrt(currentK);
-    markerG.selectAll('.marker-dot').attr('r', d => Math.max(1.5, (baseR[d.gen] || 4) / sqrtK));
-    markerG.selectAll('.marker-ring').attr('r', Math.max(3, 11 / sqrtK)).attr('stroke-width', Math.max(0.5, 1 / sqrtK));
-    markerG.selectAll('.marker-label').attr('font-size', Math.max(6, 9.5 / sqrtK));
+    markerG.selectAll('.marker-dot').attr('r', d => Math.max(1, (baseR[d.gen] || 4) / currentK));
+    markerG.selectAll('.marker-ring').attr('r', Math.max(2, 11 / currentK)).attr('stroke-width', Math.max(0.4, 1 / currentK));
+    markerG.selectAll('.marker-label').attr('font-size', Math.max(6, 9.5 / Math.sqrt(currentK)));
   });
   svg.call(zoom);
 
@@ -1504,8 +1503,8 @@ async function renderMap() {
     // Flash the marker
     markerG.selectAll('.marker-dot')
       .filter(d => d.id === loc.id)
-      .transition().duration(200).attr('r', d => (baseR[d.gen]||4)/Math.sqrt(k) * 2.5)
-      .transition().duration(400).attr('r', d => (baseR[d.gen]||4)/Math.sqrt(k));
+      .transition().duration(200).attr('r', d => (baseR[d.gen]||4)/k * 3)
+      .transition().duration(400).attr('r', d => (baseR[d.gen]||4)/k);
   };
 }
 
