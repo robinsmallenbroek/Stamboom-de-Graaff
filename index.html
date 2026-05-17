@@ -1505,8 +1505,9 @@ async function renderMap() {
   markers.filter(d => d.gen <= 2 || d.id === 'assen')
     .append('text')
     .attr('class', 'marker-label')
-    .attr('x', d => d.id === 'breda' ? -8 : 9)
-    .attr('y', 3)
+    .attr('x', d => d.id === 'breda' ? -9 : 9)
+    .attr('y', 0)
+    .attr('dominant-baseline', 'middle')
     .attr('text-anchor', d => d.id === 'breda' ? 'end' : 'start')
     .attr('fill', d => d.note ? 'rgba(255,255,255,0.35)' : genColors[d.gen])
     .style('font-size', '9.5px')
@@ -1523,9 +1524,8 @@ async function renderMap() {
     markerG.selectAll('.marker-dot').attr('r', d => Math.max(1 / currentK, (baseR[d.gen] || 4) / k15));
     markerG.selectAll('.marker-ring').attr('r', Math.max(1 / currentK, 11 / k15)).attr('stroke-width', 1 / currentK);
     markerG.selectAll('.marker-label')
-      .style('font-size', Math.max(7 / currentK, 9.5 / Math.pow(currentK, 1.1)) + 'px')
-      .attr('x', d => (d.id === 'breda' ? -8 : 9) / currentK)
-      .attr('y', 3 / currentK);
+      .style('font-size', Math.max(8 / currentK, 9.5 / Math.pow(currentK, 1.05)) + 'px')
+      .attr('x', d => (d.id === 'breda' ? -9 : 9) / currentK);
   });
   svg.call(zoom);
 
