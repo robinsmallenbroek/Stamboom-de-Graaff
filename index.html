@@ -231,7 +231,6 @@
 
     .marker-label {
       font-family: 'Inter', sans-serif;
-      font-size: 9.5px;
       font-weight: 500;
       pointer-events: none;
     }
@@ -1510,6 +1509,7 @@ async function renderMap() {
     .attr('y', 3)
     .attr('text-anchor', d => d.id === 'breda' ? 'end' : 'start')
     .attr('fill', d => d.note ? 'rgba(255,255,255,0.35)' : genColors[d.gen])
+    .style('font-size', '9.5px')
     .text(d => d.name);
 
   // Zoom — dots krimpen via √k zodat ze kleiner worden naarmate je inzoomt
@@ -1522,7 +1522,7 @@ async function renderMap() {
     // floor = 1/k → visuele minimum blijft altijd 1px op scherm
     markerG.selectAll('.marker-dot').attr('r', d => Math.max(1 / currentK, (baseR[d.gen] || 4) / k15));
     markerG.selectAll('.marker-ring').attr('r', Math.max(1 / currentK, 11 / k15)).attr('stroke-width', 1 / currentK);
-    markerG.selectAll('.marker-label').attr('font-size', Math.max(6 / currentK, 9.5 / Math.pow(currentK, 1.5)));
+    markerG.selectAll('.marker-label').style('font-size', Math.max(6 / currentK, 9.5 / Math.pow(currentK, 1.5)) + 'px');
   });
   svg.call(zoom);
 
