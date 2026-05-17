@@ -947,12 +947,13 @@ async function renderMap() {
     .attr('fill-opacity', d => d.note ? 0 : 0.85)
     .attr('stroke-dasharray', d => d.note ? '3,2.5' : null)
     .on('mouseover', function(ev, d) {
-      d3.select(this).attr('r', (baseR[d.gen] || 4) / currentK + 2.5 / currentK);
+      const r = Math.max(1.5, (baseR[d.gen] || 4) / Math.sqrt(currentK));
+      d3.select(this).attr('r', r + Math.max(1, 2.5 / Math.sqrt(currentK)));
       showTooltip(buildMapTooltip(d), ev.clientX, ev.clientY);
     })
     .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
     .on('mouseout', function(ev, d) {
-      d3.select(this).attr('r', (baseR[d.gen] || 4) / currentK);
+      d3.select(this).attr('r', Math.max(1.5, (baseR[d.gen] || 4) / Math.sqrt(currentK)));
       hideTooltip();
     })
     .on('click', function(ev, d) {
@@ -992,14 +993,15 @@ async function renderMap() {
     .attr('fill', d => d.note ? 'rgba(255,255,255,0.35)' : genColors[d.gen])
     .text(d => d.name);
 
-  // Zoom — markers tegenschalen zodat ze visueel even groot blijven
-  const zoom = d3.zoom().scaleExtent([0.5, 12]).on('zoom', ev => {
+  // Zoom — dots krimpen via √k zodat ze kleiner worden naarmate je inzoomt
+  // maar minder snel dan de geografische spreiding groeit → goed onderscheidbaar
+  const zoom = d3.zoom().scaleExtent([0.5, 100]).on('zoom', ev => {
     g.attr('transform', ev.transform);
     currentK = ev.transform.k;
-    const k = currentK;
-    markerG.selectAll('.marker-dot').attr('r', d => (baseR[d.gen] || 4) / k);
-    markerG.selectAll('.marker-ring').attr('r', 11 / k).attr('stroke-width', 1 / k);
-    markerG.selectAll('.marker-label').attr('font-size', 9.5 / k);
+    const sqrtK = Math.sqrt(currentK);
+    markerG.selectAll('.marker-dot').attr('r', d => Math.max(1.5, (baseR[d.gen] || 4) / sqrtK));
+    markerG.selectAll('.marker-ring').attr('r', Math.max(3, 11 / sqrtK)).attr('stroke-width', Math.max(0.5, 1 / sqrtK));
+    markerG.selectAll('.marker-label').attr('font-size', Math.max(6, 9.5 / sqrtK));
   });
   svg.call(zoom);
 }
