@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stamboom De Graaff</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0c0c0c;
+      color: #f0f0f0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: rgba(12,12,12,0.94);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      z-index: 100;
+      gap: 0;
+    }
+
+    .header-brand {
+      flex: 1;
+    }
+
+    .header-brand h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #f0f0f0;
+    }
+
+    .header-brand h1 em {
+      font-style: normal;
+      color: #c9a96e;
+    }
+
+    .header-brand p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      font-weight: 400;
+      margin-top: 1px;
+    }
+
+    .view-toggle {
+      display: flex;
+      gap: 3px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 9px;
+      padding: 3px;
+    }
+
+    .view-toggle button {
+      border: none;
+      background: transparent;
+      color: rgba(255,255,255,0.45);
+      padding: 5px 18px;
+      border-radius: 7px;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      letter-spacing: -0.01em;
+    }
+
+    .view-toggle button.active {
+      background: #c9a96e;
+      color: #0c0c0c;
+      font-weight: 600;
+    }
+
+    .view-toggle button:hover:not(.active) {
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.75);
+    }
+
+    /* ── VIEWS ── */
+    .view {
+      position: fixed;
+      top: 60px; left: 0; right: 0; bottom: 0;
+    }
+
+    .view.hidden { display: none; }
+
+    /* ── TREE ── */
+    #tree-svg {
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      display: block;
+    }
+    #tree-svg:active { cursor: grabbing; }
+
+    .link {
+      fill: none;
+      stroke: rgba(201,169,110,0.22);
+      stroke-width: 1.5px;
+    }
+
+    .node-rect {
+      fill: #181818;
+      stroke: rgba(255,255,255,0.09);
+      stroke-width: 1px;
+    }
+
+    .node-rect.hovered {
+      stroke: rgba(201,169,110,0.7);
+      stroke-width: 1.5px;
+    }
+
+    .node-divider {
+      stroke: rgba(255,255,255,0.09);
+      stroke-width: 1px;
+    }
+
+    .node-name-1 {
+      fill: #c9a96e;
+      font-size: 10.5px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .node-name-2 {
+      fill: rgba(240,240,240,0.82);
+      font-size: 10px;
+      font-weight: 400;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .node-info {
+      fill: rgba(255,255,255,0.36);
+      font-size: 9px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .node-badge-rect {
+      fill: rgba(201,169,110,0.15);
+      stroke: rgba(201,169,110,0.35);
+      stroke-width: 0.8px;
+    }
+
+    .node-badge-text {
+      fill: #c9a96e;
+      font-size: 7.5px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+    }
+
+    .tree-hint {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(24,24,24,0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* ── MAP ── */
+    #map-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #0c0c0c;
+      cursor: grab;
+    }
+    #map-svg:active { cursor: grabbing; }
+
+    .land {
+      fill: #1c1c1c;
+      stroke: rgba(255,255,255,0.05);
+      stroke-width: 0.5px;
+    }
+
+    .graticule {
+      fill: none;
+      stroke: rgba(255,255,255,0.025);
+      stroke-width: 0.5px;
+    }
+
+    .sphere-bg {
+      fill: #101018;
+    }
+
+    .border {
+      fill: none;
+      stroke: rgba(255,255,255,0.08);
+      stroke-width: 0.5px;
+    }
+
+    .migration-arc {
+      fill: none;
+      stroke: rgba(201,169,110,0.18);
+      stroke-width: 1.2px;
+      stroke-dasharray: 5,4;
+    }
+
+    .marker-ring {
+      fill: none;
+      stroke-width: 1px;
+      opacity: 0.25;
+    }
+
+    .marker-dot {
+      stroke-width: 1.5px;
+      cursor: pointer;
+      transition: r 0.15s ease;
+    }
+
+    .marker-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 9.5px;
+      font-weight: 500;
+      pointer-events: none;
+    }
+
+    /* ── MAP LEGEND ── */
+    .map-legend {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(18,18,18,0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 10px;
+      padding: 12px 15px;
+    }
+
+    .legend-title {
+      font-size: 9px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .legend-row:last-child { margin-bottom: 0; }
+
+    .legend-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-label {
+      font-size: 10.5px;
+      color: rgba(255,255,255,0.55);
+    }
+
+    .map-hint {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(18,18,18,0.8);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 7px;
+      padding: 6px 12px;
+      font-size: 10.5px;
+      color: rgba(255,255,255,0.35);
+      pointer-events: none;
+    }
+
+    /* ── LOADING ── */
+    .map-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid rgba(201,169,110,0.2);
+      border-top-color: #c9a96e;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .map-loading p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* ── TOOLTIP ── */
+    #tooltip {
+      position: fixed;
+      background: rgba(20,20,20,0.97);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(201,169,110,0.28);
+      border-radius: 10px;
+      padding: 12px 15px;
+      max-width: 260px;
+      min-width: 160px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+      z-index: 300;
+    }
+
+    #tooltip.show { opacity: 1; }
+
+    #tooltip .tt-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #c9a96e;
+      margin-bottom: 7px;
+      line-height: 1.3;
+    }
+
+    #tooltip .tt-row {
+      font-size: 10.5px;
+      color: rgba(240,240,240,0.6);
+      line-height: 1.55;
+    }
+
+    #tooltip .tt-note {
+      font-size: 10px;
+      color: rgba(255,255,255,0.3);
+      font-style: italic;
+      margin-top: 6px;
+    }
+
+    #tooltip .tt-sep {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      margin: 7px 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <h1>Stamboom <em>De Graaff</em></h1>
+    <p>Familie De Graaff &middot; Batavia 1892 &mdash; heden</p>
+  </div>
+  <div class="view-toggle">
+    <button id="btn-tree" class="active" onclick="showView('tree')">Stamboom</button>
+    <button id="btn-map" onclick="showView('map')">Wereldkaart</button>
+  </div>
+</header>
+
+<!-- Tree View -->
+<div id="view-tree" class="view">
+  <svg id="tree-svg"></svg>
+  <div class="tree-hint">Scroll om in te zoomen &middot; Klik en sleep om te bewegen &middot; Hover over een kaart voor details</div>
+</div>
+
+<!-- Map View -->
+<div id="view-map" class="view hidden">
+  <svg id="map-svg"></svg>
+  <div class="map-legend">
+    <div class="legend-title">Generatie</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#c9a96e"></div><div class="legend-label">Gen. 1 &mdash; Willem &amp; Clara</div></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#7eb8d4"></div><div class="legend-label">Gen. 2 &mdash; Kinderen</div></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#8bc49a"></div><div class="legend-label">Gen. 3 &mdash; Kleinkinderen</div></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#d47e7e"></div><div class="legend-label">Gen. 4 &mdash; Achterkleinkinderen</div></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#b07ed4"></div><div class="legend-label">Gen. 5 &mdash; Nakomers</div></div>
+    <div class="legend-row" style="margin-top:6px">
+      <div style="width:24px;height:1px;background:rgba(201,169,110,0.4);border-top:1px dashed rgba(201,169,110,0.5)"></div>
+      <div class="legend-label">Migratieroute</div>
+    </div>
+  </div>
+  <div class="map-hint">Scroll om in te zoomen &middot; Sleep om te bewegen</div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson@3/dist/topojson.min.js"></script>
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════
+//  FAMILY TREE DATA
+// ════════════════════════════════════════════════════════
+
+const treeData = {
+  id: 'root',
+  p1: { name: 'Willem Jacobus de Graaff jr.', born: '15-04-1892', bp: 'Batavia', died: '07-04-1928', dp: 'Indramaju' },
+  p2: { name: 'Clara Rademaker', born: '30-09-1896', bp: 'Tjimahi', died: '12-08-1962', dp: 'Breda' },
+  wed: 'Ketaun (Bengkulu) · 1916',
+  children: [
+    {
+      id: 'c1',
+      p1: { name: 'Caroline Christine de Graaff', born: '15-12-1916', bp: 'Lamongan', died: '14-01-2006', dp: 'Rotterdam' },
+      p2: { name: 'Constans Willy Reus', born: '18-05-1917', bp: 'Semarang', died: '20-06-2002', dp: 'Rotterdam' },
+      wed: 'Semarang · 1941',
+      children: []
+    },
+    {
+      id: 'c2',
+      p1: { name: 'Clair Margot de Graaff', born: '19-08-1925', bp: 'Sibolga', died: '10-05-2013', dp: 'Brazilië' },
+      p2: { name: 'Willi Gerard van Meegen', born: '27-03-1925', bp: 'Hoensbroek', died: '22-08-1995', dp: 'Brazilië' },
+      wed: 'Brazilië',
+      children: []
+    },
+    {
+      id: 'c3',
+      p1: { name: 'Guillaume "Wim" de Graaff', born: '07-07-1927', bp: 'Brussel', died: '27-10-1989', dp: 'Assen' },
+      p2: { name: 'Margaretha "Ita" Hogendorp', born: '13-05-1931', bp: 'Bandung', died: '16-09-1984', dp: 'Assen' },
+      wed: 'Djakarta · 1949',
+      children: [
+        {
+          id: 'c3-1',
+          p1: { name: 'Engeline M.T. de Graaff', born: '06-01-1950', bp: 'Djakarta', died: '08-04-2020', dp: 'Assen' },
+          p2: { name: 'Privépersoon', born: '', bp: '', died: '', dp: '' },
+          children: [
+            {
+              id: 'c3-1-1',
+              p1: { name: 'Tamara José Jansen', born: '17-12-1975', bp: '' },
+              p2: { name: 'David Mijnheer', born: '20-12-1973', bp: '' },
+              wed: 'gescheiden',
+              children: [
+                { id: 'n1', p1: { name: 'Noah Niek Jef Mijnheer', born: '19-01-2006', bp: 'Assen' }, children: [] },
+                { id: 'n2', p1: { name: 'Levi Samuel Mijnheer', born: '05-05-2007', bp: 'Assen' }, children: [] }
+              ]
+            },
+            {
+              id: 'c3-1-2',
+              p1: { name: 'Ellen Margot Jansen', born: '', bp: '' },
+              p2: { name: 'Daniel Pieter Deenen', born: '18-08-1973', bp: '' },
+              wed: 'gescheiden',
+              children: [
+                { id: 'n3', p1: { name: 'Kyra Danique Deenen', born: '27-03-2007', bp: '' }, children: [] }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'c3-2',
+          p1: { name: 'George A.F. de Graaff', born: '31-08-1951', bp: 'Djakarta', died: '31-03-1977', dp: 'Delfzijl' },
+          children: []
+        },
+        {
+          id: 'c3-3',
+          p1: { name: 'Yvonne J.A. de Graaff', born: '07-07-1953', bp: 'Djakarta' },
+          p2: { name: 'Harald Frank', born: '09-06-1951', bp: 'Recklinghausen', died: '03-12-2013', dp: 'Assen' },
+          children: [
+            { id: 'n4', p1: { name: 'Nicole Carmella H. Frank', born: '30-09-1972', bp: 'Recklinghausen' }, children: [] }
+          ]
+        },
+        {
+          id: 'c3-4a',
+          p1: { name: 'Albert W.A. de Graaff', born: '20-06-1955', bp: 'Assen', died: '19-04-2026', dp: 'Assen' },
+          p2: { name: 'Geertje van der Veen', born: '22-06-1952', bp: 'Tronde' },
+          wed: 'gescheiden',
+          badge: '1e huwelijk',
+          children: [
+            {
+              id: 'c3-4a-1',
+              p1: { name: 'Manon Simone de Graaff', born: '08-03-1976', bp: 'Assen' },
+              p2: { name: 'Joost B.J. Lighart', born: '11-12-1967', bp: 'Zeist' },
+              children: [
+                { id: 'n5', p1: { name: 'Lars Tijmen Kesimaat', born: '15-07-2003', bp: 'Assen' }, children: [] },
+                { id: 'n6', p1: { name: 'Sven Jelmer Kesimaat', born: '01-06-2005', bp: 'Assen' }, children: [] },
+                { id: 'n7', p1: { name: 'Jort Martijn Kesimaat', born: '01-06-2005', bp: 'Assen' }, children: [] }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'c3-4b',
+          p1: { name: 'Albert W.A. de Graaff', born: '20-06-1955', bp: 'Assen', died: '19-04-2026', dp: 'Assen' },
+          p2: { name: 'Christina Annette Krolis', born: '18-05-1963', bp: 'Assen' },
+          badge: '2e huwelijk',
+          children: [
+            {
+              id: 'c3-4b-1',
+              p1: { name: 'Daniel Liam de Graaff', born: '27-03-1994', bp: 'Assen' },
+              p2: { name: 'Denise Hameka', born: '12-09-1995', bp: 'Assen' },
+              children: [
+                { id: 'n8', p1: { name: 'Jaelynn Denise de Graaff', born: '29-10-2016', bp: 'Assen' }, children: [] }
+              ]
+            },
+            {
+              id: 'c3-4b-2',
+              p1: { name: 'Bas Arnout de Graaff', born: '21-09-2001', bp: 'Groningen' },
+              p2: { name: 'Aminata Gnagna Seye', born: '06-08-2003', bp: 'Poissy (Fr.)' },
+              children: [
+                { id: 'n9', p1: { name: 'Nia Amayel Seye-de Graaff', born: '06-07-2025', bp: 'Den Haag' }, children: [] }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'c3-5',
+          p1: { name: 'Eleonora G.H. de Graaff', born: '10-07-1957', bp: 'Assen' },
+          p2: { name: 'Geert Smallenbroek', born: '24-07-1963', bp: 'Assen', died: '09-09-2025', dp: 'Portugal' },
+          wed: 'gescheiden 2012',
+          children: [
+            {
+              id: 'c3-5-1',
+              p1: { name: 'Albert Eduard F. Smallenbroek', born: '21-08-1991', bp: 'Assen' },
+              p2: { name: 'Kay-Marie Schellenberg', born: '24-11-1991', bp: 'Cagayan (Fil.)' },
+              children: [
+                { id: 'n10', p1: { name: 'Elle-Yvi Juul Smallenbroek', born: '29-04-2019', bp: 'Assen' }, children: [] },
+                { id: 'n11', p1: { name: 'Ysah Harley Smallenbroek', born: '01-10-2022', bp: 'Assen' }, children: [] }
+              ]
+            },
+            {
+              id: 'c3-5-2',
+              p1: { name: 'Henk W.A. Smallenbroek', born: '31-01-1993', bp: 'Assen' },
+              p2: { name: 'Privépersoon', born: '', bp: '' },
+              children: [
+                { id: 'n12', p1: { name: 'Privépersoon', born: '', bp: '' }, children: [] }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'c3-6',
+          p1: { name: 'Eduard Edwin G. de Graaff', born: '14-02-1960', bp: 'Assen' },
+          children: []
+        },
+        {
+          id: 'c3-7',
+          p1: { name: 'Arnold R.C. de Graaff', born: '25-05-1962', bp: 'Assen', died: '01-10-1964', dp: 'Assen' },
+          children: []
+        },
+        {
+          id: 'c3-8',
+          p1: { name: 'Hedwig L.C. de Graaff', born: '04-08-1966', bp: 'Assen' },
+          p2: { name: 'Willy J.C. van der Worp', born: '28-08-1978', bp: 'Bathmen' },
+          wed: 'gescheiden',
+          children: [
+            { id: 'n13', p1: { name: 'Timme Ben A. de Graaff', born: '03-02-2009', bp: 'Deventer' }, children: [] }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+// ════════════════════════════════════════════════════════
+//  MAP LOCATIONS DATA
+// ════════════════════════════════════════════════════════
+
+const mapLocations = [
+  // Gen 1
+  { id: 'batavia',    name: 'Batavia (Jakarta)',       lat: -6.21,  lng: 106.85, gen: 1,
+    people: ['Willem Jacobus de Graaff jr. — geb. 1892', 'Engeline de Graaff — geb. 1950', 'George de Graaff — geb. 1951', 'Yvonne de Graaff — geb. 1953', 'Huwelijk Guillaume & Margaretha — 1949'] },
+  { id: 'indramaju',  name: 'Indramaju',               lat: -6.33,  lng: 108.32, gen: 1,
+    people: ['Willem Jacobus de Graaff jr. ✝ 1928'] },
+  { id: 'tjimahi',    name: 'Tjimahi',                 lat: -6.85,  lng: 107.56, gen: 1,
+    people: ['Clara Rademaker — geb. 1896'] },
+  { id: 'breda',      name: 'Breda',                   lat: 51.59,  lng: 4.78,   gen: 1,
+    people: ['Clara Rademaker ✝ 1962'] },
+  { id: 'ketaun',     name: 'Ketaun (Bengkulu)',        lat: -3.77,  lng: 102.26, gen: 1,
+    people: ['Huwelijk Willem & Clara — 08-01-1916'] },
+
+  // Gen 2
+  { id: 'lamongan',   name: 'Lamongan (Soerabaja)',    lat: -7.10,  lng: 112.41, gen: 2,
+    people: ['Caroline Christine de Graaff — geb. 1916'] },
+  { id: 'rotterdam',  name: 'Rotterdam',               lat: 51.93,  lng: 4.48,   gen: 2,
+    people: ['Caroline Christine de Graaff ✝ 2006', 'Constans Willy Reus ✝ 2002'] },
+  { id: 'semarang',   name: 'Semarang',                lat: -6.97,  lng: 110.42, gen: 2,
+    people: ['Constans Willy Reus — geb. 1917', 'Huwelijk Caroline & Constans — 1941'] },
+  { id: 'sibolga',    name: 'Sibolga (Sumatra)',        lat: 1.74,   lng: 98.77,  gen: 2,
+    people: ['Clair Margot de Graaff — geb. 1925'] },
+  { id: 'brasil',     name: 'Rio Grande do Sul, Brazilië', lat: -29.99, lng: -51.13, gen: 2,
+    people: ['Clair Margot de Graaff ✝ 2013', 'Willi Gerard van Meegen ✝ 1995'] },
+  { id: 'hoensbroek', name: 'Hoensbroek',              lat: 50.92,  lng: 5.93,   gen: 2,
+    people: ['Willi Gerard van Meegen — geb. 1925'] },
+  { id: 'brussel',    name: 'Brussel (Etterbeek)',      lat: 50.83,  lng: 4.40,   gen: 2,
+    people: ['Guillaume "Wim" de Graaff — geb. 1927'] },
+  { id: 'bandung',    name: 'Bandung',                  lat: -6.90,  lng: 107.61, gen: 2,
+    people: ['Margaretha "Ita" Hogendorp — geb. 1931'] },
+
+  // Gen 3 (many in Assen)
+  { id: 'assen',      name: 'Assen',                   lat: 52.99,  lng: 6.55,   gen: 3,
+    people: ['Guillaume de Graaff ✝ 1989', 'Margaretha Hogendorp ✝ 1984', 'Engeline de Graaff ✝ 2020', 'Albert de Graaff 1955–2026', 'Eleonora de Graaff — geb. 1957', 'Eduard de Graaff — geb. 1960', 'Arnold de Graaff 1962–1964', 'Hedwig de Graaff — geb. 1966', '+ vele kleinkinderen geboren in Assen'] },
+  { id: 'delfzijl',   name: 'Delfzijl',                lat: 53.33,  lng: 6.92,   gen: 3,
+    people: ['George A.F. de Graaff ✝ 1977'] },
+  { id: 'recklinghausen', name: 'Recklinghausen',      lat: 51.61,  lng: 7.20,   gen: 3,
+    people: ['Harald Frank — geb. 1951', 'Nicole Carmella H. Frank — geb. 1972'] },
+
+  // Gen 4
+  { id: 'groningen',  name: 'Groningen',               lat: 53.22,  lng: 6.57,   gen: 4,
+    people: ['Bas Arnout de Graaff — geb. 2001'] },
+  { id: 'zeist',      name: 'Zeist',                   lat: 52.09,  lng: 5.23,   gen: 4,
+    people: ['Joost B.J. Lighart — geb. 1967'] },
+  { id: 'deventer',   name: 'Deventer',                 lat: 52.25,  lng: 6.16,   gen: 4,
+    people: ['Timme Ben A. de Graaff — geb. 2009'] },
+  { id: 'bathmen',    name: 'Bathmen',                  lat: 52.26,  lng: 6.27,   gen: 4,
+    people: ['Willy J.C. van der Worp — geb. 1978'] },
+  { id: 'poissy',     name: 'Poissy, Frankrijk',        lat: 48.92,  lng: 2.04,   gen: 4,
+    people: ['Aminata Gnagna Seye — geb. 2003'] },
+  { id: 'cagayan',    name: 'Cagayan, Filipijnen',      lat: 8.47,   lng: 124.65, gen: 4,
+    people: ['Kay-Marie Schellenberg — geb. 1991'] },
+  { id: 'portugal',   name: 'Portugal (Paserne)',        lat: 39.61,  lng: -7.85,  gen: 4,
+    people: ['Geert Smallenbroek ✝ 2025'] },
+
+  // Gen 5
+  { id: 'denhaag',    name: 'Den Haag',                 lat: 52.08,  lng: 4.30,   gen: 5,
+    people: ['Nia Amayel Seye-de Graaff — geb. 2025'] },
+
+  // Chinese voorvader (mondelinge overlevering)
+  { id: 'china',      name: 'China (Shanghai)',          lat: 31.23,  lng: 121.47, gen: 1,
+    people: ['Voorvader/voormoeder uit China', '(mondelinge overlevering — niet gedocumenteerd in stamboom)'],
+    note: true }
+];
+
+const migrationArcs = [
+  { from: 'china',    to: 'tjimahi',  label: 'Voorvader China' },
+  { from: 'batavia',  to: 'assen',    label: 'Repatriëring 1954' },
+  { from: 'sibolga',  to: 'brasil',   label: 'Emigratie' },
+  { from: 'batavia',  to: 'breda',    label: 'Repatriëring' },
+  { from: 'semarang', to: 'rotterdam',label: 'Repatriëring' },
+];
+
+const genColors = { 1: '#c9a96e', 2: '#7eb8d4', 3: '#8bc49a', 4: '#d47e7e', 5: '#b07ed4' };
+
+// ════════════════════════════════════════════════════════
+//  TOOLTIP
+// ════════════════════════════════════════════════════════
+
+const tooltipEl = document.getElementById('tooltip');
+
+function showTooltip(html, cx, cy) {
+  tooltipEl.innerHTML = html;
+  tooltipEl.classList.add('show');
+  positionTooltip(cx, cy);
+}
+
+function positionTooltip(cx, cy) {
+  const tw = 270, th = 180;
+  const x = cx + 16 + tw > window.innerWidth ? cx - tw - 12 : cx + 16;
+  const y = cy + th > window.innerHeight ? cy - th : cy;
+  tooltipEl.style.left = x + 'px';
+  tooltipEl.style.top  = y + 'px';
+}
+
+function hideTooltip() {
+  tooltipEl.classList.remove('show');
+}
+
+// ════════════════════════════════════════════════════════
+//  VIEW SWITCHING
+// ════════════════════════════════════════════════════════
+
+let mapReady = false;
+
+function showView(name) {
+  document.getElementById('view-tree').classList.toggle('hidden', name !== 'tree');
+  document.getElementById('view-map').classList.toggle('hidden', name !== 'map');
+  document.getElementById('btn-tree').classList.toggle('active', name === 'tree');
+  document.getElementById('btn-map').classList.toggle('active', name === 'map');
+  if (name === 'map' && !mapReady) { mapReady = true; renderMap(); }
+}
+
+// ════════════════════════════════════════════════════════
+//  TREE RENDERING
+// ════════════════════════════════════════════════════════
+
+function renderTree() {
+  const container = document.getElementById('view-tree');
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+
+  const svg = d3.select('#tree-svg')
+    .attr('width', W)
+    .attr('height', H);
+
+  const root = d3.hierarchy(treeData, d => d.children && d.children.length > 0 ? d.children : null);
+
+  const NW = 256, NH = 88, HGAP = 28, VGAP = 72;
+
+  d3.tree().nodeSize([NW + HGAP, NH + VGAP]).separation((a, b) => a.parent === b.parent ? 1 : 1.25)(root);
+
+  const g = svg.append('g');
+
+  // Links
+  g.selectAll('.link')
+    .data(root.links())
+    .enter().append('path')
+    .attr('class', 'link')
+    .attr('d', d => {
+      const sx = d.source.x, sy = d.source.y + NH;
+      const tx = d.target.x, ty = d.target.y;
+      const my = (sy + ty) / 2;
+      return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
+    });
+
+  // Node groups
+  const ng = g.selectAll('.ngrp')
+    .data(root.descendants())
+    .enter().append('g')
+    .attr('class', 'ngrp')
+    .attr('transform', d => `translate(${d.x - NW / 2},${d.y})`);
+
+  // Background rect
+  ng.append('rect')
+    .attr('class', 'node-rect')
+    .attr('width', NW).attr('height', NH).attr('rx', 8).attr('ry', 8)
+    .on('mouseover', function(ev, d) {
+      d3.select(this).classed('hovered', true);
+      showTooltip(buildTreeTooltip(d.data), ev.clientX, ev.clientY);
+    })
+    .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
+    .on('mouseout', function() {
+      d3.select(this).classed('hovered', false);
+      hideTooltip();
+    });
+
+  const isCouple = d => d.data.p2 && d.data.p2.name && d.data.p2.name !== 'Privépersoon';
+
+  // Divider line
+  ng.filter(d => isCouple(d))
+    .append('line')
+    .attr('class', 'node-divider')
+    .attr('x1', 12).attr('x2', NW - 12).attr('y1', NH / 2).attr('y2', NH / 2);
+
+  // P1 name
+  ng.append('text')
+    .attr('class', 'node-name-1')
+    .attr('x', NW / 2).attr('text-anchor', 'middle')
+    .attr('y', d => isCouple(d) ? NH * 0.25 : NH * 0.44)
+    .attr('dominant-baseline', 'middle')
+    .text(d => clip(d.data.p1 ? d.data.p1.name : '', 30));
+
+  // P1 info line
+  ng.filter(d => d.data.p1 && (d.data.p1.bp || d.data.p1.dp))
+    .append('text')
+    .attr('class', 'node-info')
+    .attr('x', NW / 2).attr('text-anchor', 'middle')
+    .attr('y', d => isCouple(d) ? NH * 0.38 : NH * 0.60)
+    .attr('dominant-baseline', 'middle')
+    .text(d => {
+      const p = d.data.p1;
+      if (p.bp && p.dp) return `${p.bp} → ${p.dp}`;
+      return p.bp || p.dp || '';
+    });
+
+  // P2 name
+  ng.filter(d => d.data.p2 && d.data.p2.name)
+    .append('text')
+    .attr('class', d => isCouple(d) ? 'node-name-2' : 'node-info')
+    .attr('x', NW / 2).attr('text-anchor', 'middle')
+    .attr('y', d => isCouple(d) ? NH * 0.66 : NH * 0.75)
+    .attr('dominant-baseline', 'middle')
+    .text(d => clip(d.data.p2.name, 30));
+
+  // P2 info
+  ng.filter(d => isCouple(d) && d.data.p2 && (d.data.p2.bp || d.data.p2.dp))
+    .append('text')
+    .attr('class', 'node-info')
+    .attr('x', NW / 2).attr('text-anchor', 'middle')
+    .attr('y', NH * 0.80)
+    .attr('dominant-baseline', 'middle')
+    .text(d => {
+      const p = d.data.p2;
+      if (p.bp && p.dp) return `${p.bp} → ${p.dp}`;
+      return p.bp || p.dp || '';
+    });
+
+  // Badge
+  ng.filter(d => d.data.badge)
+    .each(function(d) {
+      const grp = d3.select(this);
+      const txt = d.data.badge;
+      const tw = txt.length * 5.5 + 10;
+      grp.append('rect')
+        .attr('class', 'node-badge-rect')
+        .attr('x', NW - tw - 5).attr('y', 4).attr('width', tw).attr('height', 14).attr('rx', 3);
+      grp.append('text')
+        .attr('class', 'node-badge-text')
+        .attr('x', NW - tw / 2 - 5).attr('y', 11).attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
+        .text(txt);
+    });
+
+  // Zoom & pan
+  const zoom = d3.zoom().scaleExtent([0.08, 3]).on('zoom', ev => g.attr('transform', ev.transform));
+  svg.call(zoom);
+
+  // Fit to screen
+  requestAnimationFrame(() => {
+    const bb = g.node().getBBox();
+    const sc = Math.min(0.85, W / (bb.width + 80), H / (bb.height + 80));
+    const tx = W / 2 - (bb.x + bb.width / 2) * sc;
+    const ty = 28 - bb.y * sc;
+    svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(sc));
+  });
+}
+
+function buildTreeTooltip(d) {
+  let h = '';
+  const p1 = d.p1, p2 = d.p2;
+  if (p1) {
+    h += `<div class="tt-title">${esc(p1.name)}</div>`;
+    if (p1.born) h += `<div class="tt-row">Geb. ${esc(p1.born)}${p1.bp ? ' &middot; ' + esc(p1.bp) : ''}</div>`;
+    if (p1.died) h += `<div class="tt-row">Ovl. ${esc(p1.died)}${p1.dp ? ' &middot; ' + esc(p1.dp) : ''}</div>`;
+  }
+  if (p2 && p2.name && p2.name !== 'Privépersoon') {
+    h += '<hr class="tt-sep">';
+    h += `<div class="tt-title">${esc(p2.name)}</div>`;
+    if (p2.born) h += `<div class="tt-row">Geb. ${esc(p2.born)}${p2.bp ? ' &middot; ' + esc(p2.bp) : ''}</div>`;
+    if (p2.died) h += `<div class="tt-row">Ovl. ${esc(p2.died)}${p2.dp ? ' &middot; ' + esc(p2.dp) : ''}</div>`;
+    if (d.wed) h += `<div class="tt-row" style="color:#c9a96e;margin-top:5px">&#9901; ${esc(d.wed)}</div>`;
+  }
+  if (d.badge) h += `<div class="tt-row" style="color:#c9a96e;margin-top:4px">${esc(d.badge)}</div>`;
+  return h;
+}
+
+// ════════════════════════════════════════════════════════
+//  MAP RENDERING
+// ════════════════════════════════════════════════════════
+
+async function renderMap() {
+  const container = document.getElementById('view-map');
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+
+  // Loading indicator
+  const loadDiv = document.createElement('div');
+  loadDiv.className = 'map-loading';
+  loadDiv.innerHTML = '<div class="spinner"></div><p>Wereldkaart laden…</p>';
+  container.appendChild(loadDiv);
+
+  const svg = d3.select('#map-svg').attr('width', W).attr('height', H);
+
+  let world;
+  try {
+    world = await d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
+  } catch (e) {
+    loadDiv.innerHTML = '<p style="color:rgba(255,255,255,0.4)">Kan kaart niet laden — controleer internetverbinding</p>';
+    return;
+  }
+  loadDiv.remove();
+
+  const projection = d3.geoNaturalEarth1()
+    .scale(W / 6.5)
+    .translate([W / 2, H / 2 + H * 0.04]);
+
+  const path = d3.geoPath().projection(projection);
+  const countries = topojson.feature(world, world.objects.countries);
+  const borders   = topojson.mesh(world, world.objects.countries, (a, b) => a !== b);
+
+  const g = svg.append('g');
+
+  // Ocean background
+  g.append('path')
+    .datum({ type: 'Sphere' })
+    .attr('class', 'sphere-bg')
+    .attr('d', path);
+
+  // Graticule
+  g.append('path')
+    .datum(d3.geoGraticule()())
+    .attr('class', 'graticule')
+    .attr('d', path);
+
+  // Countries
+  g.selectAll('.land')
+    .data(countries.features)
+    .enter().append('path')
+    .attr('class', 'land')
+    .attr('d', path);
+
+  // Borders
+  g.append('path')
+    .datum(borders)
+    .attr('class', 'border')
+    .attr('d', path);
+
+  // Migration arcs
+  const arcG = g.append('g');
+  migrationArcs.forEach(arc => {
+    const from = mapLocations.find(l => l.id === arc.from);
+    const to   = mapLocations.find(l => l.id === arc.to);
+    if (!from || !to) return;
+    const [x1, y1] = projection([from.lng, from.lat]);
+    const [x2, y2] = projection([to.lng, to.lat]);
+    const mx = (x1 + x2) / 2;
+    const my = (y1 + y2) / 2 - Math.hypot(x2 - x1, y2 - y1) * 0.22;
+    arcG.append('path')
+      .attr('class', 'migration-arc')
+      .attr('d', `M${x1},${y1} Q${mx},${my} ${x2},${y2}`);
+  });
+
+  // Marker groups
+  const markerG = g.append('g');
+  const markers = markerG.selectAll('.marker')
+    .data(mapLocations)
+    .enter().append('g')
+    .attr('class', 'marker')
+    .attr('transform', d => {
+      const [x, y] = projection([d.lng, d.lat]);
+      return `translate(${x},${y})`;
+    });
+
+  // Outer ring for gen 1
+  markers.filter(d => d.gen === 1 && !d.note)
+    .append('circle')
+    .attr('class', 'marker-ring')
+    .attr('r', 11)
+    .attr('stroke', d => genColors[d.gen]);
+
+  // Main dot
+  const baseR = { 1: 6, 2: 5.5, 3: 5, 4: 4.5, 5: 4 };
+
+  markers.append('circle')
+    .attr('class', 'marker-dot')
+    .attr('r', d => baseR[d.gen] || 4)
+    .attr('fill', d => d.note ? 'transparent' : genColors[d.gen])
+    .attr('stroke', d => genColors[d.gen])
+    .attr('fill-opacity', d => d.note ? 0 : 0.85)
+    .attr('stroke-dasharray', d => d.note ? '3,2.5' : null)
+    .on('mouseover', function(ev, d) {
+      d3.select(this).attr('r', (baseR[d.gen] || 4) + 3);
+      showTooltip(buildMapTooltip(d), ev.clientX, ev.clientY);
+    })
+    .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
+    .on('mouseout', function(ev, d) {
+      d3.select(this).attr('r', baseR[d.gen] || 4);
+      hideTooltip();
+    });
+
+  // Labels for major / gen1-2 markers
+  markers.filter(d => d.gen <= 2 || d.id === 'assen' || d.id === 'china')
+    .append('text')
+    .attr('class', 'marker-label')
+    .attr('x', d => d.id === 'breda' ? -8 : 9)
+    .attr('y', 3)
+    .attr('text-anchor', d => d.id === 'breda' ? 'end' : 'start')
+    .attr('fill', d => d.note ? 'rgba(255,255,255,0.35)' : genColors[d.gen])
+    .text(d => d.name);
+
+  // Zoom
+  const zoom = d3.zoom().scaleExtent([0.5, 12]).on('zoom', ev => g.attr('transform', ev.transform));
+  svg.call(zoom);
+}
+
+function buildMapTooltip(d) {
+  let h = `<div class="tt-title">${esc(d.name)}</div>`;
+  d.people.forEach(p => {
+    h += `<div class="tt-row">${esc(p)}</div>`;
+  });
+  if (d.note) h += `<div class="tt-note">Niet gedocumenteerd in stamboom — mondelinge overlevering</div>`;
+  return h;
+}
+
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
+
+function clip(s, n) { return s && s.length > n ? s.slice(0, n - 1) + '…' : (s || ''); }
+
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+
+renderTree();
+
+</script>
+</body>
+</html>
