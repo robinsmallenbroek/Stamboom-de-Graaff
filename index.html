@@ -465,6 +465,59 @@
       background: linear-gradient(transparent, rgba(12,12,12,0.9));
       pointer-events: none;
     }
+
+    /* ── PERSON CARD ── */
+    #person-card {
+      position: fixed;
+      bottom: 20px; left: 20px;
+      width: 270px;
+      background: rgba(16,16,16,0.97);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(201,169,110,0.35);
+      border-radius: 12px;
+      z-index: 200;
+      transform: translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    #person-card.pc-open {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .pc-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 13px 14px 8px; border-bottom: 1px solid rgba(255,255,255,0.07);
+      gap: 8px;
+    }
+    .pc-name { font-size: 12.5px; font-weight: 600; color: #c9a96e; line-height: 1.3; flex: 1; }
+    .pc-close {
+      border: none; background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.5);
+      width: 22px; height: 22px; border-radius: 5px; cursor: pointer; flex-shrink: 0;
+      font-size: 11px; font-family: inherit; transition: background 0.12s;
+    }
+    .pc-close:hover { background: rgba(255,255,255,0.14); color: #f0f0f0; }
+    .pc-body { padding: 8px 14px 10px; }
+    .pc-row { font-size: 10.5px; color: rgba(255,255,255,0.5); line-height: 1.6; }
+    .pc-row span { color: rgba(255,255,255,0.75); }
+    .pc-nav {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 6px; padding: 8px 14px 13px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .pc-nav-btn {
+      border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.55); padding: 5px 8px; border-radius: 7px;
+      font-size: 10px; font-family: inherit; cursor: pointer; text-align: center;
+      transition: all 0.15s;
+    }
+    .pc-nav-btn:hover { background: rgba(201,169,110,0.15); border-color: rgba(201,169,110,0.4); color: #c9a96e; }
+    .pc-nav-btn.pc-active { background: rgba(201,169,110,0.2); border-color: #c9a96e; color: #c9a96e; }
+
+    /* Clickable names in stats panel and tooltips */
+    .pc-link { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(201,169,110,0.4); }
+    .pc-link:hover { color: #c9a96e !important; }
   </style>
 </head>
 <body>
@@ -576,6 +629,16 @@
 <div id="view-timeline" class="view hidden">
   <svg id="timeline-svg"></svg>
   <div class="tl-hint">Scroll om in te zoomen &middot; Sleep om te bewegen</div>
+</div>
+
+<!-- Global person card -->
+<div id="person-card">
+  <div class="pc-head">
+    <div class="pc-name" id="pc-name"></div>
+    <button class="pc-close" onclick="closePersonCard()">✕</button>
+  </div>
+  <div class="pc-body" id="pc-body"></div>
+  <div class="pc-nav" id="pc-nav"></div>
 </div>
 
 <!-- Detail panel (statistieken) -->
@@ -860,6 +923,76 @@ function hideTooltip() {
 
 let mapReady = false, statsReady = false, timelineReady = false;
 
+let selectedPerson = null;
+let treeZoomTo     = null;   // set by renderTree
+let tlScrollTo     = null;   // set by renderTimeline
+const YEAR = 2026;
+
+function findPerson(name) {
+  return people.find(p => p.name === name) || null;
+}
+
+function showPersonCard(p) {
+  if (!p) return;
+  selectedPerson = p;
+  const alive  = !p.dy;
+  const age    = alive ? YEAR - p.by : p.dy - p.by;
+  const years  = alive ? `geb. ${p.by}` : `${p.by} – ${p.dy}`;
+  const gIcon  = p.g === 'm' ? '♂' : '♀';
+  const gc     = ['#c9a96e','#7eb8d4','#8bc49a','#d47e7e','#b07ed4'][p.gen - 1];
+  const sign   = typeof starSign !== 'undefined' && p.bmd ? starSign(p.bmd) : '';
+
+  document.getElementById('pc-name').textContent = p.name;
+  document.getElementById('pc-body').innerHTML = `
+    <div class="pc-row">${years} · ${age} jaar · ${gIcon}</div>
+    <div class="pc-row"><span>${p.land}</span> · <span style="color:${gc}">Generatie ${p.gen}</span></div>
+    ${sign ? `<div class="pc-row">Sterrenbeeld: <span>${esc(sign)}</span></div>` : ''}
+    <div class="pc-row" style="margin-top:4px;color:${alive ? '#8bc49a' : '#d47e7e'}">${alive ? '● Levend' : '● Overleden'}</div>
+  `;
+
+  const views = [
+    { id:'tree',     label:'🌳 Stamboom' },
+    { id:'map',      label:'🌍 Kaart' },
+    { id:'stats',    label:'📊 Statistieken' },
+    { id:'timeline', label:'📅 Tijdlijn' },
+  ];
+  const currentView = ['tree','map','stats','timeline']
+    .find(v => !document.getElementById('view-'+v).classList.contains('hidden')) || 'tree';
+
+  document.getElementById('pc-nav').innerHTML = views.map(v =>
+    `<button class="pc-nav-btn${v.id === currentView ? ' pc-active' : ''}" onclick="navTo('${v.id}')">${v.label}</button>`
+  ).join('');
+
+  document.getElementById('person-card').classList.add('pc-open');
+}
+
+function closePersonCard() {
+  document.getElementById('person-card').classList.remove('pc-open');
+  selectedPerson = null;
+}
+
+function navTo(view) {
+  showView(view);
+  if (!selectedPerson) return;
+  // Update active button highlight
+  document.querySelectorAll('.pc-nav-btn').forEach(b => {
+    b.classList.toggle('pc-active', b.textContent.toLowerCase().includes(view.slice(0,4)));
+  });
+  const p = selectedPerson;
+  setTimeout(() => {
+    if (view === 'tree' && treeZoomTo) {
+      treeZoomTo(p.name);
+    } else if (view === 'stats') {
+      if (statsReady) showPanel(p.name, [p]);
+    } else if (view === 'timeline' && tlScrollTo) {
+      tlScrollTo(p.name);
+    } else if (view === 'map') {
+      // Pan to person's birth location on map
+      if (window.mapPanTo) window.mapPanTo(p);
+    }
+  }, 80);
+}
+
 function showView(name) {
   ['tree','map','stats','timeline'].forEach(v => {
     document.getElementById('view-' + v).classList.toggle('hidden', name !== v);
@@ -990,6 +1123,28 @@ function renderTree() {
         .text(txt);
     });
 
+  // Clickable overlays: top half → p1, bottom half → p2
+  ng.each(function(d) {
+    const grp = d3.select(this);
+    const p1obj = d.data.p1 ? findPerson(d.data.p1.name) : null;
+    const hasP2 = d.data.p2 && d.data.p2.name && d.data.p2.name !== 'Privépersoon';
+    const p2obj = hasP2 ? findPerson(d.data.p2.name) : null;
+    const splitY = hasP2 ? NH / 2 : NH;
+
+    if (p1obj) {
+      grp.append('rect')
+        .attr('x', 0).attr('y', 0).attr('width', NW).attr('height', splitY)
+        .attr('fill', 'transparent').attr('cursor', 'pointer')
+        .on('click', () => showPersonCard(p1obj));
+    }
+    if (p2obj) {
+      grp.append('rect')
+        .attr('x', 0).attr('y', NH / 2).attr('width', NW).attr('height', NH / 2)
+        .attr('fill', 'transparent').attr('cursor', 'pointer')
+        .on('click', () => showPersonCard(p2obj));
+    }
+  });
+
   // Zoom & pan
   const zoom = d3.zoom().scaleExtent([0.08, 3]).on('zoom', ev => g.attr('transform', ev.transform));
   svg.call(zoom);
@@ -1002,6 +1157,27 @@ function renderTree() {
     const ty = 28 - bb.y * sc;
     svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(sc));
   });
+
+  // Expose zoom-to-person for the global person card
+  const nodeByName = {};
+  root.descendants().forEach(n => {
+    if (n.data.p1 && n.data.p1.name) nodeByName[n.data.p1.name] = n;
+    if (n.data.p2 && n.data.p2.name) nodeByName[n.data.p2.name] = n;
+  });
+  treeZoomTo = name => {
+    const n = nodeByName[name];
+    if (!n) return;
+    const k = 1.4;
+    const tx = W/2 - n.x * k;
+    const ty = H/2 - (n.y + NH/2) * k;
+    svg.transition().duration(500)
+       .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(k));
+    // Flash highlight
+    g.selectAll('.node-rect')
+      .filter(d => (d.data.p1 && d.data.p1.name === name) || (d.data.p2 && d.data.p2.name === name))
+      .classed('hovered', true);
+    setTimeout(() => g.selectAll('.node-rect').classed('hovered', false), 1200);
+  };
 }
 
 function buildTreeTooltip(d) {
@@ -1189,14 +1365,38 @@ async function renderMap() {
     markerG.selectAll('.marker-label').attr('font-size', Math.max(6, 9.5 / sqrtK));
   });
   svg.call(zoom);
+
+  window.mapPanTo = p => {
+    const loc = mapLocations.find(l =>
+      l.people.some(s => s.startsWith(p.name))
+    );
+    if (!loc) return;
+    const [px, py] = projection([loc.lng, loc.lat]);
+    const k = 4;
+    svg.transition().duration(600)
+       .call(zoom.transform, d3.zoomIdentity
+         .translate(W/2 - px*k, H/2 - py*k).scale(k));
+    // Flash the marker
+    markerG.selectAll('.marker-dot')
+      .filter(d => d.id === loc.id)
+      .transition().duration(200).attr('r', d => (baseR[d.gen]||4)/Math.sqrt(k) * 2.5)
+      .transition().duration(400).attr('r', d => (baseR[d.gen]||4)/Math.sqrt(k));
+  };
 }
 
 function buildMapTooltip(d) {
   let h = `<div class="tt-title">${esc(d.name)}</div>`;
-  d.people.forEach(p => {
-    h += `<div class="tt-row">${esc(p)}</div>`;
+  d.people.forEach(raw => {
+    // Try to match "Name — detail" pattern
+    const namePart = raw.split(' —')[0].split(' ✦')[0].split(' ✝')[0].trim();
+    const p = findPerson(namePart);
+    if (p) {
+      h += `<div class="tt-row pc-link" data-person="${esc(p.name)}">${esc(raw)}</div>`;
+    } else {
+      h += `<div class="tt-row">${esc(raw)}</div>`;
+    }
   });
-  if (d.note) h += `<div class="tt-note">Niet gedocumenteerd in stamboom — mondelinge overlevering</div>`;
+  if (d.note) h += `<div class="tt-note">Niet gedocumenteerd in stamboom</div>`;
   return h;
 }
 
@@ -1276,7 +1476,7 @@ const people = [
 // ════════════════════════════════════════════════════════
 
 function renderStats() {
-  const Y = 2026;
+  const Y = YEAR;
   const dec  = people.filter(p => p.dy);
   const liv  = people.filter(p => !p.dy);
   const men  = people.filter(p => p.g === 'm');
@@ -1509,7 +1709,7 @@ function drawVBar(svgId, data) {
 }
 
 function showPanel(title, persons) {
-  const Y = 2026;
+  const Y = YEAR;
   document.getElementById('sp-title').textContent = title;
   document.getElementById('sp-cnt').textContent   = `(${persons.length})`;
 
@@ -1522,7 +1722,7 @@ function showPanel(title, persons) {
         const years  = alive ? `geb. ${p.by}` : `${p.by} – ${p.dy}`;
         const gIcon  = p.g === 'm' ? '♂' : '♀';
         return `<div class="sp-person">
-          <div class="sp-pname">${esc(p.name)}</div>
+          <div class="sp-pname pc-link" data-person="${esc(p.name)}">${esc(p.name)}</div>
           <div class="sp-pmeta">
             <span class="${alive ? 'sp-alive' : 'sp-dead'}">${alive ? '● levend' : '● overl.'}</span>
             <span>${esc(years)}</span>
@@ -1836,6 +2036,8 @@ function renderTimeline() {
   // ── Section E: Person rows ──
   const genColorsArr = ['#c9a96e','#7eb8d4','#8bc49a','#d47e7e','#b07ed4'];
   const perG = svg.append('g').attr('clip-path', `url(#${clipId})`);
+  const peopleStartY = SECTION_E_Y;
+  const PER_GAP = 0;
 
   const TODAY_Y = 2026;
 
@@ -1884,7 +2086,8 @@ function renderTimeline() {
         );
       })
       .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
-      .on('mouseout',  function() { d3.select(this).attr('fill-opacity', isDeceased ? 0.45 : 0.72); hideTooltip(); });
+      .on('mouseout',  function() { d3.select(this).attr('fill-opacity', isDeceased ? 0.45 : 0.72); hideTooltip(); })
+      .on('click', (ev, d) => { showPersonCard(p); });
 
     // Birth dot
     perG.append('circle')
@@ -1897,6 +2100,9 @@ function renderTimeline() {
       .attr('fill-opacity', isDeceased ? 0.45 : 0.72)
       .attr('pointer-events','none');
   });
+
+  // Bind sortedPeople as data to bars for tlScrollTo filter
+  const personBars = perG.selectAll('.tl-per-bar').data(sortedPeople);
 
   // ── Zoom (x-only) ──
   const zoom = d3.zoom()
@@ -1939,11 +2145,39 @@ function renderTimeline() {
     });
 
   svg.call(zoom);
+
+  tlScrollTo = name => {
+    const idx = sortedPeople.findIndex(p => p.name === name);
+    if (idx < 0) return;
+    const personY = peopleStartY + idx * (PER_ROW_H + PER_GAP);
+    const container = document.getElementById('view-timeline');
+    container.scrollTo({ top: personY - container.clientHeight / 2, behavior: 'smooth' });
+    // Flash highlight: find the bar and briefly brighten it
+    const bar = personBars.filter(p => p.name === name);
+    bar.attr('fill-opacity', 1)
+       .transition().delay(600).duration(600).attr('fill-opacity', d => d.dy ? 0.45 : 0.72);
+  };
 }
 
 // ════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════
+
+document.getElementById('tooltip').addEventListener('click', e => {
+  const el = e.target.closest('[data-person]');
+  if (el) {
+    const p = findPerson(el.dataset.person);
+    if (p) { hideTooltip(); showPersonCard(p); }
+  }
+});
+
+document.getElementById('sp-body').addEventListener('click', e => {
+  const el = e.target.closest('[data-person]');
+  if (el) {
+    const p = findPerson(el.dataset.person);
+    if (p) showPersonCard(p);
+  }
+});
 
 renderTree();
 
