@@ -1501,10 +1501,17 @@ async function renderMap() {
     }
   });
 
-  // Labels for major / gen1-2 markers
-  markers.filter(d => d.gen <= 2 || d.id === 'assen')
-    .append('text')
+  // Labels in een aparte bovenste groep zodat ze altijd boven alle dots liggen
+  const labelG = g.append('g');
+  const labelData = mapLocations.filter(d => d.gen <= 2 || d.id === 'assen');
+  const mapLabels = labelG.selectAll('.marker-label')
+    .data(labelData)
+    .enter().append('text')
     .attr('class', 'marker-label')
+    .attr('transform', d => {
+      const [px, py] = projection([d.lng, d.lat]);
+      return `translate(${px},${py})`;
+    })
     .attr('x', d => d.id === 'breda' ? -9 : 9)
     .attr('y', 0)
     .attr('dominant-baseline', 'middle')
@@ -1523,7 +1530,7 @@ async function renderMap() {
     // floor = 1/k → visuele minimum blijft altijd 1px op scherm
     markerG.selectAll('.marker-dot').attr('r', d => Math.max(1 / currentK, (baseR[d.gen] || 4) / k15));
     markerG.selectAll('.marker-ring').attr('r', Math.max(1 / currentK, 11 / k15)).attr('stroke-width', 1 / currentK);
-    markerG.selectAll('.marker-label')
+    mapLabels
       .style('font-size', Math.max(8 / currentK, 9.5 / Math.pow(currentK, 1.05)) + 'px')
       .attr('x', d => (d.id === 'breda' ? -9 : 9) / currentK);
   });
