@@ -2000,272 +2000,273 @@ const timelineEvents = [
     detail:'Naoorlogse wederopbouw. Marshallplan-hulp en economische groei in Nederland in de jaren 50 en 60.' },
 ];
 
-const TL_EVT_CATS = ['Oorlogen','Ned.-Indië','Politiek','Maatschappij'];
+const TL_EVT_CATS = ['Oorlogen','Ned.-Indië','Politiek','Migratie','Wederopbouw'];
+
+// Familiegebeurtenissen – kan later worden aangevuld
+// Formaat: { label, start, end, row, color, detail }
+// Voorbeeld: { label:'Overtocht vanuit Indonesië', start:1954, end:1954, row:0, color:'#c9a96e', detail:'...' }
+const familyEvents = [];
 
 function renderTimeline() {
   const container = document.getElementById('view-timeline');
   const W = container.clientWidth || window.innerWidth;
 
-  const MARGIN = { left: 165, right: 20, top: 20, bottom: 20 };
-  const EVT_ROW_H  = 30;
-  const PER_ROW_H  = 18;
-  const AXIS_H     = 40;
+  const MARGIN      = { left: 165, right: 20, top: 20, bottom: 20 };
+  const EVT_ROW_H   = 30;
+  const FAM_ROW_H   = 30;
+  const PER_ROW_H   = 18;
+  const AXIS_H      = 40;
   const SEC_TITLE_H = 28;
+  const GAP         = 14;
   const NUM_EVT_ROWS = 5;
-  const SECTION_A_Y = MARGIN.top;
-  const SECTION_B_Y = SECTION_A_Y + SEC_TITLE_H;
-  const SECTION_C_Y = SECTION_B_Y + NUM_EVT_ROWS * EVT_ROW_H;
-  const SECTION_D_Y = SECTION_C_Y + AXIS_H;
-  const SECTION_E_Y = SECTION_D_Y + SEC_TITLE_H;
+  const NUM_FAM_ROWS = familyEvents.length > 0
+    ? Math.max(...familyEvents.map(e => e.row || 0)) + 1 : 1;
 
-  const sortedPeople = [...people].sort((a,b) => a.by - b.by);
-  const TOTAL_H = SECTION_E_Y + sortedPeople.length * PER_ROW_H + MARGIN.bottom + 20;
+  const SECT_HIST_TITLE = MARGIN.top;
+  const SECT_HIST_ROWS  = SECT_HIST_TITLE + SEC_TITLE_H;
+  const SECT_FAM_TITLE  = SECT_HIST_ROWS + NUM_EVT_ROWS * EVT_ROW_H + GAP;
+  const SECT_FAM_ROWS   = SECT_FAM_TITLE + SEC_TITLE_H;
+  const SECT_AXIS       = SECT_FAM_ROWS + NUM_FAM_ROWS * FAM_ROW_H + GAP;
+  const SECT_PEO_TITLE  = SECT_AXIS + AXIS_H + GAP;
+  const SECT_PEO_ROWS   = SECT_PEO_TITLE + SEC_TITLE_H;
 
-  const svg = d3.select('#timeline-svg')
-    .attr('width', W)
-    .attr('height', TOTAL_H);
+  const sortedPeople = [...people].sort((a, b) => a.by - b.by);
+  const TODAY_Y  = 2026;
+  const TOTAL_H  = SECT_PEO_ROWS + sortedPeople.length * PER_ROW_H + MARGIN.bottom + 20;
 
+  const svg = d3.select('#timeline-svg').attr('width', W).attr('height', TOTAL_H);
   svg.selectAll('*').remove();
 
-  const xBase = d3.scaleLinear()
-    .domain([1888, 2028])
-    .range([MARGIN.left, W - MARGIN.right]);
+  const xBase = d3.scaleLinear().domain([1888, 2028]).range([MARGIN.left, W - MARGIN.right]);
+  let xSc = xBase;
 
   // Clip path
   const clipId = 'tl-clip';
   svg.append('defs').append('clipPath').attr('id', clipId)
-    .append('rect')
-    .attr('x', MARGIN.left).attr('y', 0)
-    .attr('width', W - MARGIN.left - MARGIN.right)
-    .attr('height', TOTAL_H);
+    .append('rect').attr('x', MARGIN.left).attr('y', 0)
+    .attr('width', W - MARGIN.left - MARGIN.right).attr('height', TOTAL_H);
 
-  // ── Section A: HISTORISCHE CONTEXT title ──
-  svg.append('text')
-    .attr('x', MARGIN.left)
-    .attr('y', SECTION_A_Y + 14)
-    .attr('font-size', 11)
-    .attr('font-weight', 600)
-    .attr('font-family', 'Inter,sans-serif')
-    .attr('fill', 'rgba(255,255,255,0.40)')
-    .attr('text-transform', 'uppercase')
-    .attr('letter-spacing', '0.09em')
-    .text('HISTORISCHE CONTEXT');
+  const clipG = svg.append('g').attr('clip-path', `url(#${clipId})`);
+  const gridYTop    = SECT_HIST_ROWS;
+  const gridYBottom = SECT_PEO_ROWS + sortedPeople.length * PER_ROW_H + 10;
 
-  // ── Section B: Event rows ──
-  const evtG = svg.append('g').attr('clip-path', `url(#${clipId})`);
+  // ── Hover background band ──
+  const hoverBand = clipG.append('rect')
+    .attr('y', gridYTop).attr('height', gridYBottom - gridYTop)
+    .attr('fill', 'rgba(255,255,255,0.055)').attr('pointer-events', 'none').attr('opacity', 0);
 
-  // Decade gridlines (behind events)
-  const gridG = evtG.append('g').attr('class','tl-gridlines');
-  const gridYTop    = SECTION_B_Y;
-  const gridYBottom = SECTION_E_Y + sortedPeople.length * PER_ROW_H + 10;
-
-  function drawGridlines(xScale) {
+  // ── Gridlines ──
+  const gridG = clipG.append('g').attr('class', 'tl-gridlines');
+  function drawGridlines(xs) {
     gridG.selectAll('line').remove();
     for (let yr = 1890; yr <= 2030; yr += 10) {
-      const gx = xScale(yr);
-      gridG.append('line')
-        .attr('class','tl-grid')
-        .attr('x1', gx).attr('x2', gx)
+      gridG.append('line').attr('x1', xs(yr)).attr('x2', xs(yr))
         .attr('y1', gridYTop).attr('y2', gridYBottom)
-        .attr('stroke', 'rgba(255,255,255,0.06)')
-        .attr('stroke-width', 1);
+        .attr('stroke', 'rgba(255,255,255,0.06)').attr('stroke-width', 1);
     }
   }
   drawGridlines(xBase);
 
-  // Category labels (left margin, outside clip)
+  // ── Section A: HISTORISCHE CONTEXT title ──
+  svg.append('text')
+    .attr('x', MARGIN.left).attr('y', SECT_HIST_TITLE + 16)
+    .attr('font-size', 11).attr('font-weight', 600).attr('font-family', 'Inter,sans-serif')
+    .attr('fill', 'rgba(255,255,255,0.40)').text('HISTORISCHE CONTEXT');
+
+  // Category labels (left margin)
   TL_EVT_CATS.forEach((cat, i) => {
-    const cy = SECTION_B_Y + i * EVT_ROW_H + EVT_ROW_H / 2;
     svg.append('text')
-      .attr('x', MARGIN.left - 6)
-      .attr('y', cy)
-      .attr('text-anchor', 'end')
-      .attr('dominant-baseline', 'middle')
-      .attr('font-size', 10)
-      .attr('font-family', 'Inter,sans-serif')
-      .attr('fill', 'rgba(255,255,255,0.35)')
-      .text(cat);
+      .attr('x', MARGIN.left - 6).attr('y', SECT_HIST_ROWS + i * EVT_ROW_H + EVT_ROW_H / 2)
+      .attr('text-anchor', 'end').attr('dominant-baseline', 'middle')
+      .attr('font-size', 10).attr('font-family', 'Inter,sans-serif')
+      .attr('fill', 'rgba(255,255,255,0.32)').text(cat);
   });
 
-  // Event rects and labels
-  const evtRects = evtG.selectAll('.tl-evt-rect')
-    .data(timelineEvents)
-    .enter().append('rect')
-    .attr('class','tl-evt-rect')
-    .attr('x',      d => xBase(d.start))
-    .attr('y',      d => SECTION_B_Y + d.row * EVT_ROW_H + 4)
-    .attr('width',  d => Math.max(0, xBase(d.end) - xBase(d.start)))
-    .attr('height', EVT_ROW_H - 8)
-    .attr('rx', 3)
-    .attr('fill', d => d.color)
-    .attr('fill-opacity', 0.35)
-    .attr('cursor','pointer')
-    .on('mouseover', function(ev,d) {
-      d3.select(this).attr('fill-opacity', 0.65);
-      showTooltip(
-        `<div class="tt-title">${esc(d.label)}</div>` +
-        `<div class="tt-row">${Math.floor(d.start)} – ${Math.ceil(d.end)}</div>` +
-        `<hr class="tt-sep"><div class="tt-row">${esc(d.detail)}</div>`,
-        ev.clientX, ev.clientY
-      );
-    })
-    .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
-    .on('mouseout',  function(ev,d) { d3.select(this).attr('fill-opacity', 0.35); hideTooltip(); });
-
-  const evtLabels = evtG.selectAll('.tl-evt-label')
-    .data(timelineEvents)
-    .enter().append('text')
-    .attr('class','tl-evt-label')
-    .attr('x', d => xBase(d.start) + 4)
-    .attr('y', d => SECTION_B_Y + d.row * EVT_ROW_H + EVT_ROW_H / 2)
-    .attr('dominant-baseline','middle')
-    .attr('font-size', 9)
-    .attr('font-family','Inter,sans-serif')
-    .attr('fill','rgba(255,255,255,0.85)')
-    .attr('pointer-events','none')
-    .text(d => {
-      const bw = xBase(d.end) - xBase(d.start);
-      return bw >= 40 ? d.label : '';
+  // ── Hover helpers ──
+  function onEvtEnter(ev, d, rect, baseOpacity) {
+    d3.select(rect).attr('fill-opacity', baseOpacity + 0.3);
+    hoverBand
+      .attr('x', xSc(d.start))
+      .attr('width', Math.max(3, xSc(d.end || d.start + 0.5) - xSc(d.start)))
+      .attr('opacity', 1);
+    const cnt = sortedPeople.filter(p => p.by <= (d.end || d.start) && (p.dy || TODAY_Y) >= d.start).length;
+    perG.selectAll('.tl-per-bar').each(function(p) {
+      if (!p) return;
+      const inPeriod = p.by <= (d.end || d.start) && (p.dy || TODAY_Y) >= d.start;
+      d3.select(this).attr('fill-opacity', inPeriod ? (p.dy ? 0.9 : 1) : 0.08);
     });
-
-  // ── Section C: Decade axis ──
-  const axisG = svg.append('g')
-    .attr('class','tl-axis')
-    .attr('transform', `translate(0,${SECTION_C_Y})`);
-
-  function redrawAxis(xScale) {
-    axisG.call(
-      d3.axisBottom(xScale)
-        .tickValues(d3.range(1890, 2031, 10))
-        .tickFormat(d3.format('d'))
+    showTooltip(
+      `<div class="tt-title">${esc(d.label)}</div>` +
+      `<div class="tt-row">${Math.floor(d.start)}${d.end && d.end > d.start + 0.1 ? ' – ' + Math.ceil(d.end) : ''}</div>` +
+      (d.detail ? `<hr class="tt-sep"><div class="tt-row">${esc(d.detail)}</div>` : '') +
+      `<div class="tt-row" style="margin-top:6px;color:#c9a96e">` +
+      `${cnt} familielid${cnt !== 1 ? 'en' : ''} leefde${cnt !== 1 ? 'n' : ''} in deze periode</div>`,
+      ev.clientX, ev.clientY
     );
-    axisG.select('.domain').attr('stroke','rgba(255,255,255,0.2)');
-    axisG.selectAll('.tick line').attr('stroke','rgba(255,255,255,0.2)');
-    axisG.selectAll('.tick text')
-      .attr('fill','rgba(255,255,255,0.4)')
-      .attr('font-size', 10)
-      .attr('font-family','Inter,sans-serif');
+  }
+
+  function onEvtLeave(ev, d, rect, baseOpacity) {
+    d3.select(rect).attr('fill-opacity', baseOpacity);
+    hoverBand.attr('opacity', 0);
+    perG.selectAll('.tl-per-bar').each(function(p) {
+      if (!p) return;
+      d3.select(this).attr('fill-opacity', p.dy ? 0.45 : 0.72);
+    });
+    hideTooltip();
+  }
+
+  // ── Historical event rects ──
+  const evtRects = clipG.selectAll('.tl-evt-rect').data(timelineEvents).enter().append('rect')
+    .attr('class', 'tl-evt-rect')
+    .attr('x',      d => xBase(d.start))
+    .attr('y',      d => SECT_HIST_ROWS + d.row * EVT_ROW_H + 4)
+    .attr('width',  d => Math.max(0, xBase(d.end) - xBase(d.start)))
+    .attr('height', EVT_ROW_H - 8).attr('rx', 3)
+    .attr('fill', d => d.color).attr('fill-opacity', 0.35).attr('cursor', 'pointer')
+    .on('mouseover', function(ev, d) { onEvtEnter(ev, d, this, 0.35); })
+    .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
+    .on('mouseout',  function(ev, d) { onEvtLeave(ev, d, this, 0.35); });
+
+  const evtLabels = clipG.selectAll('.tl-evt-label').data(timelineEvents).enter().append('text')
+    .attr('class', 'tl-evt-label')
+    .attr('x', d => xBase(d.start) + 4)
+    .attr('y', d => SECT_HIST_ROWS + d.row * EVT_ROW_H + EVT_ROW_H / 2)
+    .attr('dominant-baseline', 'middle').attr('font-size', 9).attr('font-family', 'Inter,sans-serif')
+    .attr('fill', 'rgba(255,255,255,0.85)').attr('pointer-events', 'none')
+    .text(d => (xBase(d.end) - xBase(d.start)) >= 40 ? d.label : '');
+
+  // ── Section: FAMILIEGEBEURTENISSEN title ──
+  svg.append('text')
+    .attr('x', MARGIN.left).attr('y', SECT_FAM_TITLE + 16)
+    .attr('font-size', 11).attr('font-weight', 600).attr('font-family', 'Inter,sans-serif')
+    .attr('fill', 'rgba(255,255,255,0.40)').text('FAMILIEGEBEURTENISSEN');
+
+  // Family event placeholder when empty
+  if (familyEvents.length === 0) {
+    clipG.append('rect')
+      .attr('x', MARGIN.left).attr('y', SECT_FAM_ROWS + 4)
+      .attr('width', W - MARGIN.left - MARGIN.right).attr('height', FAM_ROW_H - 8)
+      .attr('rx', 4).attr('fill', 'none')
+      .attr('stroke', 'rgba(255,255,255,0.07)').attr('stroke-dasharray', '6,4');
+    svg.append('text')
+      .attr('x', MARGIN.left + 12).attr('y', SECT_FAM_ROWS + FAM_ROW_H / 2)
+      .attr('dominant-baseline', 'middle').attr('font-size', 9.5)
+      .attr('font-family', 'Inter,sans-serif').attr('fill', 'rgba(255,255,255,0.18)')
+      .attr('font-style', 'italic')
+      .text('Nog geen familiegebeurtenissen — wordt later aangevuld');
+  }
+
+  // Family event label column (left margin)
+  if (familyEvents.length > 0) {
+    const famCats = [...new Set(familyEvents.map(e => e.category || ''))];
+    famCats.forEach((cat, i) => {
+      svg.append('text')
+        .attr('x', MARGIN.left - 6).attr('y', SECT_FAM_ROWS + i * FAM_ROW_H + FAM_ROW_H / 2)
+        .attr('text-anchor', 'end').attr('dominant-baseline', 'middle')
+        .attr('font-size', 10).attr('font-family', 'Inter,sans-serif')
+        .attr('fill', 'rgba(255,255,255,0.32)').text(cat);
+    });
+  }
+
+  const famRects = clipG.selectAll('.tl-fam-rect').data(familyEvents).enter().append('rect')
+    .attr('class', 'tl-fam-rect')
+    .attr('x',      d => xBase(d.start))
+    .attr('y',      d => SECT_FAM_ROWS + (d.row || 0) * FAM_ROW_H + 4)
+    .attr('width',  d => Math.max(4, xBase(d.end || d.start + 0.5) - xBase(d.start)))
+    .attr('height', FAM_ROW_H - 8).attr('rx', 3)
+    .attr('fill', d => d.color || '#c9a96e').attr('fill-opacity', 0.45).attr('cursor', 'pointer')
+    .on('mouseover', function(ev, d) { onEvtEnter(ev, d, this, 0.45); })
+    .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
+    .on('mouseout',  function(ev, d) { onEvtLeave(ev, d, this, 0.45); });
+
+  const famLabels = clipG.selectAll('.tl-fam-label').data(familyEvents).enter().append('text')
+    .attr('class', 'tl-fam-label')
+    .attr('x', d => xBase(d.start) + 4)
+    .attr('y', d => SECT_FAM_ROWS + (d.row || 0) * FAM_ROW_H + FAM_ROW_H / 2)
+    .attr('dominant-baseline', 'middle').attr('font-size', 9).attr('font-family', 'Inter,sans-serif')
+    .attr('fill', 'rgba(255,255,255,0.85)').attr('pointer-events', 'none')
+    .text(d => (xBase(d.end || d.start + 0.5) - xBase(d.start)) >= 40 ? d.label : '');
+
+  // ── Axis ──
+  const axisG = svg.append('g').attr('class', 'tl-axis').attr('transform', `translate(0,${SECT_AXIS})`);
+  function redrawAxis(xs) {
+    axisG.call(d3.axisBottom(xs).tickValues(d3.range(1890, 2031, 10)).tickFormat(d3.format('d')));
+    axisG.select('.domain').attr('stroke', 'rgba(255,255,255,0.2)');
+    axisG.selectAll('.tick line').attr('stroke', 'rgba(255,255,255,0.2)');
+    axisG.selectAll('.tick text').attr('fill', 'rgba(255,255,255,0.4)').attr('font-size', 10).attr('font-family', 'Inter,sans-serif');
   }
   redrawAxis(xBase);
 
-  // ── Section D: FAMILIELEDEN title ──
+  // ── FAMILIELEDEN title ──
   svg.append('text')
-    .attr('x', MARGIN.left)
-    .attr('y', SECTION_D_Y + 14)
-    .attr('font-size', 11)
-    .attr('font-weight', 600)
-    .attr('font-family', 'Inter,sans-serif')
-    .attr('fill', 'rgba(255,255,255,0.40)')
-    .text('FAMILIELEDEN');
+    .attr('x', MARGIN.left).attr('y', SECT_PEO_TITLE + 16)
+    .attr('font-size', 11).attr('font-weight', 600).attr('font-family', 'Inter,sans-serif')
+    .attr('fill', 'rgba(255,255,255,0.40)').text('FAMILIELEDEN');
 
-  // ── Section E: Person rows ──
+  // ── Person rows ──
   const genColorsArr = ['#c9a96e','#7eb8d4','#8bc49a','#d47e7e','#b07ed4'];
   const perG = svg.append('g').attr('clip-path', `url(#${clipId})`);
-  const peopleStartY = SECTION_E_Y;
+  const peopleStartY = SECT_PEO_ROWS;
   const PER_GAP = 0;
 
-  const TODAY_Y = 2026;
-
-  // Name labels (left margin, outside clip)
   sortedPeople.forEach((p, i) => {
-    const py = SECTION_E_Y + i * PER_ROW_H;
-    const col = genColorsArr[(p.gen||1)-1];
+    const py  = SECT_PEO_ROWS + i * PER_ROW_H;
+    const col = genColorsArr[(p.gen || 1) - 1];
     const isDeceased = !!p.dy;
 
-    // Name label
     svg.append('text')
-      .attr('x', MARGIN.left - 6)
-      .attr('y', py + PER_ROW_H / 2)
-      .attr('text-anchor','end')
-      .attr('dominant-baseline','middle')
-      .attr('font-size', 9)
-      .attr('font-family','Inter,sans-serif')
-      .attr('fill','rgba(255,255,255,0.6)')
-      .text(clip((p.firstName||'') + ' ' + (p.lastName||p.name||''), 24));
+      .attr('x', MARGIN.left - 6).attr('y', py + PER_ROW_H / 2)
+      .attr('text-anchor', 'end').attr('dominant-baseline', 'middle')
+      .attr('font-size', 9).attr('font-family', 'Inter,sans-serif')
+      .attr('fill', 'rgba(255,255,255,0.6)')
+      .text(clip((p.firstName || '') + ' ' + (p.lastName || p.name || ''), 24));
 
-    // Bar
     const barEnd = p.dy || TODAY_Y;
-    const bx = xBase(p.by);
-    const bw = Math.max(2, xBase(barEnd) - xBase(p.by));
-
     perG.append('rect')
-      .attr('class','tl-per-bar')
-      .attr('data-i', i)
-      .attr('x', bx)
-      .attr('y', py + (PER_ROW_H - 12) / 2)
-      .attr('width', bw)
-      .attr('height', 12)
-      .attr('rx', 3)
-      .attr('fill', col)
-      .attr('fill-opacity', isDeceased ? 0.45 : 0.72)
-      .attr('cursor','pointer')
+      .attr('class', 'tl-per-bar').attr('data-i', i)
+      .attr('x', xBase(p.by)).attr('y', py + (PER_ROW_H - 12) / 2)
+      .attr('width', Math.max(2, xBase(barEnd) - xBase(p.by))).attr('height', 12).attr('rx', 3)
+      .attr('fill', col).attr('fill-opacity', isDeceased ? 0.45 : 0.72).attr('cursor', 'pointer')
       .on('mouseover', function(ev) {
         d3.select(this).attr('fill-opacity', 0.95);
-        const age = (p.dy||TODAY_Y) - p.by;
+        const age = (p.dy || TODAY_Y) - p.by;
         showTooltip(
           `<div class="tt-title">${esc(p.firstName + ' ' + p.lastName)}</div>` +
           `<div class="tt-row">Geb. ${p.by}${p.bmd ? ' (' + p.bmd + ')' : ''}</div>` +
           (p.dy ? `<div class="tt-row">Ovl. ${p.dy}</div>` : `<div class="tt-row" style="color:#8bc49a">Levend</div>`) +
-          `<div class="tt-row">${age} jaar &middot; Gen. ${p.gen} &middot; ${esc(p.land)}</div>`,
+          `<div class="tt-row">${age} jaar · Gen. ${p.gen} · ${esc(p.land)}</div>`,
           ev.clientX, ev.clientY
         );
       })
       .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
-      .on('mouseout',  function() { d3.select(this).attr('fill-opacity', isDeceased ? 0.45 : 0.72); hideTooltip(); })
-      .on('click', (ev, d) => { showPersonCard(p); });
+      .on('mouseout', function() { d3.select(this).attr('fill-opacity', isDeceased ? 0.45 : 0.72); hideTooltip(); })
+      .on('click', () => showPersonCard(p));
 
-    // Birth dot
     perG.append('circle')
-      .attr('class','tl-per-dot')
-      .attr('data-i', i)
-      .attr('cx', xBase(p.by))
-      .attr('cy', py + PER_ROW_H / 2)
-      .attr('r', 4)
-      .attr('fill', col)
-      .attr('fill-opacity', isDeceased ? 0.45 : 0.72)
-      .attr('pointer-events','none');
+      .attr('class', 'tl-per-dot').attr('data-i', i)
+      .attr('cx', xBase(p.by)).attr('cy', py + PER_ROW_H / 2).attr('r', 4)
+      .attr('fill', col).attr('fill-opacity', isDeceased ? 0.45 : 0.72).attr('pointer-events', 'none');
   });
 
-  // Bind sortedPeople as data to bars for tlScrollTo filter
   const personBars = perG.selectAll('.tl-per-bar').data(sortedPeople);
 
   // ── Zoom (x-only) ──
   const zoom = d3.zoom()
     .scaleExtent([1, 20])
-    .translateExtent([[MARGIN.left, -Infinity],[W - MARGIN.right, Infinity]])
+    .translateExtent([[MARGIN.left, -Infinity], [W - MARGIN.right, Infinity]])
     .on('zoom', function(ev) {
       if (ev.transform.k === 1 && ev.transform.x === 0) return;
-      const newX = ev.transform.rescaleX(xBase);
-
-      // Update gridlines
-      drawGridlines(newX);
-
-      // Update event rects
-      evtRects
-        .attr('x',     d => newX(d.start))
-        .attr('width', d => Math.max(0, newX(d.end) - newX(d.start)));
-
-      // Update event labels
-      evtLabels
-        .attr('x', d => newX(d.start) + 4)
-        .text(d => {
-          const bw = newX(d.end) - newX(d.start);
-          return bw >= 40 ? d.label : '';
-        });
-
-      // Update axis
-      redrawAxis(newX);
-
-      // Update person bars and dots
+      xSc = ev.transform.rescaleX(xBase);
+      drawGridlines(xSc);
+      evtRects.attr('x', d => xSc(d.start)).attr('width', d => Math.max(0, xSc(d.end) - xSc(d.start)));
+      evtLabels.attr('x', d => xSc(d.start) + 4).text(d => (xSc(d.end) - xSc(d.start)) >= 40 ? d.label : '');
+      famRects.attr('x', d => xSc(d.start)).attr('width', d => Math.max(4, xSc(d.end || d.start + 0.5) - xSc(d.start)));
+      famLabels.attr('x', d => xSc(d.start) + 4).text(d => (xSc(d.end || d.start + 0.5) - xSc(d.start)) >= 40 ? d.label : '');
+      redrawAxis(xSc);
       sortedPeople.forEach((p, i) => {
         const barEnd = p.dy || TODAY_Y;
-        const bx = newX(p.by);
-        const bw = Math.max(2, newX(barEnd) - newX(p.by));
-        perG.selectAll(`.tl-per-bar[data-i="${i}"]`)
-          .attr('x', bx)
-          .attr('width', bw);
-        perG.selectAll(`.tl-per-dot[data-i="${i}"]`)
-          .attr('cx', newX(p.by));
+        perG.selectAll(`.tl-per-bar[data-i="${i}"]`).attr('x', xSc(p.by)).attr('width', Math.max(2, xSc(barEnd) - xSc(p.by)));
+        perG.selectAll(`.tl-per-dot[data-i="${i}"]`).attr('cx', xSc(p.by));
       });
     });
 
@@ -2275,14 +2276,13 @@ function renderTimeline() {
     const idx = sortedPeople.findIndex(p => p.name === name);
     if (idx < 0) return;
     const personY = peopleStartY + idx * (PER_ROW_H + PER_GAP);
-    const container = document.getElementById('view-timeline');
-    container.scrollTo({ top: personY - container.clientHeight / 2, behavior: 'smooth' });
-    // Flash highlight: find the bar and briefly brighten it
+    const cont = document.getElementById('view-timeline');
+    cont.scrollTo({ top: personY - cont.clientHeight / 2, behavior: 'smooth' });
     const bar = personBars.filter(p => p.name === name);
-    bar.attr('fill-opacity', 1)
-       .transition().delay(600).duration(600).attr('fill-opacity', d => d.dy ? 0.45 : 0.72);
+    bar.attr('fill-opacity', 1).transition().delay(600).duration(600).attr('fill-opacity', d => d.dy ? 0.45 : 0.72);
   };
 }
+
 
 // ════════════════════════════════════════════════════════
 //  INIT
