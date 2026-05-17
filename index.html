@@ -1522,7 +1522,10 @@ async function renderMap() {
     // floor = 1/k → visuele minimum blijft altijd 1px op scherm
     markerG.selectAll('.marker-dot').attr('r', d => Math.max(1 / currentK, (baseR[d.gen] || 4) / k15));
     markerG.selectAll('.marker-ring').attr('r', Math.max(1 / currentK, 11 / k15)).attr('stroke-width', 1 / currentK);
-    markerG.selectAll('.marker-label').style('font-size', Math.max(7 / currentK, 9.5 / Math.pow(currentK, 1.1)) + 'px');
+    markerG.selectAll('.marker-label')
+      .style('font-size', Math.max(7 / currentK, 9.5 / Math.pow(currentK, 1.1)) + 'px')
+      .attr('x', d => (d.id === 'breda' ? -8 : 9) / currentK)
+      .attr('y', 3 / currentK);
   });
   svg.call(zoom);
 
