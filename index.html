@@ -454,6 +454,17 @@
     .sp-pmeta { display: flex; gap: 7px; flex-wrap: wrap; font-size: 9.5px; color: rgba(255,255,255,0.38); }
     .sp-alive { color: #8bc49a; }
     .sp-dead  { color: #d47e7e; }
+
+    /* ── TIMELINE ── */
+    #view-timeline { overflow-y: auto; }
+    #timeline-svg  { display: block; cursor: grab; }
+    #timeline-svg:active { cursor: grabbing; }
+    .tl-hint {
+      position: sticky; bottom: 0; text-align: center;
+      padding: 8px; font-size: 10.5px; color: rgba(255,255,255,0.28);
+      background: linear-gradient(transparent, rgba(12,12,12,0.9));
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -467,6 +478,7 @@
     <button id="btn-tree" class="active" onclick="showView('tree')">Stamboom</button>
     <button id="btn-map" onclick="showView('map')">Wereldkaart</button>
     <button id="btn-stats" onclick="showView('stats')">Statistieken</button>
+    <button id="btn-timeline" onclick="showView('timeline')">Tijdlijn</button>
   </div>
 </header>
 
@@ -550,7 +562,20 @@
         <ul class="rec-list" id="st-records"></ul>
       </div>
     </div>
+
+    <div class="srow srow-1">
+      <div class="sc">
+        <div class="ct">Wist je dat?</div>
+        <div id="funfacts" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
+      </div>
+    </div>
   </div>
+</div>
+
+<!-- Timeline View -->
+<div id="view-timeline" class="view hidden">
+  <svg id="timeline-svg"></svg>
+  <div class="tl-hint">Scroll om in te zoomen &middot; Sleep om te bewegen</div>
 </div>
 
 <!-- Detail panel (statistieken) -->
@@ -833,15 +858,16 @@ function hideTooltip() {
 //  VIEW SWITCHING
 // ════════════════════════════════════════════════════════
 
-let mapReady = false, statsReady = false;
+let mapReady = false, statsReady = false, timelineReady = false;
 
 function showView(name) {
-  ['tree','map','stats'].forEach(v => {
+  ['tree','map','stats','timeline'].forEach(v => {
     document.getElementById('view-' + v).classList.toggle('hidden', name !== v);
     document.getElementById('btn-' + v).classList.toggle('active', name === v);
   });
-  if (name === 'map'   && !mapReady)   { mapReady   = true; renderMap(); }
-  if (name === 'stats' && !statsReady) { statsReady = true; renderStats(); }
+  if (name === 'map'      && !mapReady)      { mapReady      = true; renderMap(); }
+  if (name === 'stats'    && !statsReady)    { statsReady    = true; renderStats(); }
+  if (name === 'timeline' && !timelineReady) { timelineReady = true; renderTimeline(); }
 }
 
 // ════════════════════════════════════════════════════════
@@ -1194,55 +1220,55 @@ function esc(s) {
 
 const people = [
   // Gen 1
-  { name:'Willem Jacobus de Graaff jr.', by:1892, dy:1928, g:'m', gen:1, sur:'De Graaff',   land:'Indonesië' },
-  { name:'Clara Rademaker',              by:1896, dy:1962, g:'f', gen:1, sur:'Rademaker',    land:'Indonesië' },
+  { name:'Willem Jacobus de Graaff jr.', firstName:'Willem',    lastName:'de Graaff',       by:1892, dy:1928, g:'m', gen:1, sur:'De Graaff',       land:'Indonesië',  bmd:'04-15' },
+  { name:'Clara Rademaker',              firstName:'Clara',     lastName:'Rademaker',        by:1896, dy:1962, g:'f', gen:1, sur:'Rademaker',        land:'Indonesië',  bmd:'09-30' },
   // Gen 2
-  { name:'Caroline Christine de Graaff', by:1916, dy:2006, g:'f', gen:2, sur:'De Graaff',   land:'Indonesië' },
-  { name:'Constans Willy Reus',          by:1917, dy:2002, g:'m', gen:2, sur:'Reus',         land:'Indonesië' },
-  { name:'Clair Margot de Graaff',       by:1925, dy:2013, g:'f', gen:2, sur:'De Graaff',   land:'Indonesië' },
-  { name:'Willi Gerard van Meegen',      by:1925, dy:1995, g:'m', gen:2, sur:'Van Meegen',  land:'Nederland' },
-  { name:'Guillaume "Wim" de Graaff',   by:1927, dy:1989, g:'m', gen:2, sur:'De Graaff',   land:'België' },
-  { name:'Margaretha "Ita" Hogendorp',  by:1931, dy:1984, g:'f', gen:2, sur:'Hogendorp',   land:'Indonesië' },
+  { name:'Caroline Christine de Graaff', firstName:'Caroline',  lastName:'de Graaff',       by:1916, dy:2006, g:'f', gen:2, sur:'De Graaff',       land:'Indonesië',  bmd:'12-15' },
+  { name:'Constans Willy Reus',          firstName:'Constans',  lastName:'Reus',             by:1917, dy:2002, g:'m', gen:2, sur:'Reus',             land:'Indonesië',  bmd:'05-18' },
+  { name:'Clair Margot de Graaff',       firstName:'Clair',     lastName:'de Graaff',       by:1925, dy:2013, g:'f', gen:2, sur:'De Graaff',       land:'Indonesië',  bmd:'08-19' },
+  { name:'Willi Gerard van Meegen',      firstName:'Willi',     lastName:'van Meegen',       by:1925, dy:1995, g:'m', gen:2, sur:'Van Meegen',      land:'Nederland',  bmd:'03-27' },
+  { name:'Guillaume "Wim" de Graaff',   firstName:'Guillaume', lastName:'de Graaff',       by:1927, dy:1989, g:'m', gen:2, sur:'De Graaff',       land:'België',     bmd:'07-07' },
+  { name:'Margaretha "Ita" Hogendorp',  firstName:'Margaretha',lastName:'Hogendorp',        by:1931, dy:1984, g:'f', gen:2, sur:'Hogendorp',       land:'Indonesië',  bmd:'05-13' },
   // Gen 3
-  { name:'Engeline M.T. de Graaff',     by:1950, dy:2020, g:'f', gen:3, sur:'De Graaff',   land:'Indonesië' },
-  { name:'George A.F. de Graaff',       by:1951, dy:1977, g:'m', gen:3, sur:'De Graaff',   land:'Indonesië' },
-  { name:'Yvonne J.A. de Graaff',       by:1953, dy:null, g:'f', gen:3, sur:'De Graaff',   land:'Indonesië' },
-  { name:'Harald Frank',                by:1951, dy:2013, g:'m', gen:3, sur:'Frank',        land:'Duitsland' },
-  { name:'Albert W.A. de Graaff',       by:1955, dy:2026, g:'m', gen:3, sur:'De Graaff',   land:'Nederland' },
-  { name:'Geertje van der Veen',        by:1952, dy:null, g:'f', gen:3, sur:'Van der Veen', land:'Nederland' },
-  { name:'Christina Annette Krolis',    by:1963, dy:null, g:'f', gen:3, sur:'Krolis',       land:'Nederland' },
-  { name:'Eleonora G.H. de Graaff',     by:1957, dy:null, g:'f', gen:3, sur:'De Graaff',   land:'Nederland' },
-  { name:'Geert Smallenbroek',          by:1963, dy:2025, g:'m', gen:3, sur:'Smallenbroek', land:'Nederland' },
-  { name:'Eduard Edwin G. de Graaff',   by:1960, dy:null, g:'m', gen:3, sur:'De Graaff',   land:'Nederland' },
-  { name:'Arnold R.C. de Graaff',       by:1962, dy:1964, g:'m', gen:3, sur:'De Graaff',   land:'Nederland' },
-  { name:'Hedwig L.C. de Graaff',       by:1966, dy:null, g:'f', gen:3, sur:'De Graaff',   land:'Nederland' },
-  { name:'Willy J.C. van der Worp',     by:1978, dy:null, g:'f', gen:3, sur:'Van der Worp', land:'Nederland' },
+  { name:'Engeline M.T. de Graaff',     firstName:'Engeline',  lastName:'de Graaff',       by:1950, dy:2020, g:'f', gen:3, sur:'De Graaff',       land:'Indonesië',  bmd:'01-06' },
+  { name:'George A.F. de Graaff',       firstName:'George',    lastName:'de Graaff',       by:1951, dy:1977, g:'m', gen:3, sur:'De Graaff',       land:'Indonesië',  bmd:'08-31' },
+  { name:'Yvonne J.A. de Graaff',       firstName:'Yvonne',    lastName:'de Graaff',       by:1953, dy:null, g:'f', gen:3, sur:'De Graaff',       land:'Indonesië',  bmd:'07-07' },
+  { name:'Harald Frank',                firstName:'Harald',    lastName:'Frank',            by:1951, dy:2013, g:'m', gen:3, sur:'Frank',            land:'Duitsland',  bmd:'06-09' },
+  { name:'Albert W.A. de Graaff',       firstName:'Albert W.A.',lastName:'de Graaff',      by:1955, dy:2026, g:'m', gen:3, sur:'De Graaff',       land:'Nederland',  bmd:'06-20' },
+  { name:'Geertje van der Veen',        firstName:'Geertje',   lastName:'van der Veen',    by:1952, dy:null, g:'f', gen:3, sur:'Van der Veen',    land:'Nederland',  bmd:'06-22' },
+  { name:'Christina Annette Krolis',    firstName:'Christina', lastName:'Krolis',           by:1963, dy:null, g:'f', gen:3, sur:'Krolis',           land:'Nederland',  bmd:'05-18' },
+  { name:'Eleonora G.H. de Graaff',     firstName:'Eleonora',  lastName:'de Graaff',       by:1957, dy:null, g:'f', gen:3, sur:'De Graaff',       land:'Nederland',  bmd:'07-10' },
+  { name:'Geert Smallenbroek',          firstName:'Geert',     lastName:'Smallenbroek',    by:1963, dy:2025, g:'m', gen:3, sur:'Smallenbroek',    land:'Nederland',  bmd:'07-24' },
+  { name:'Eduard Edwin G. de Graaff',   firstName:'Eduard',    lastName:'de Graaff',       by:1960, dy:null, g:'m', gen:3, sur:'De Graaff',       land:'Nederland',  bmd:'02-14' },
+  { name:'Arnold R.C. de Graaff',       firstName:'Arnold',    lastName:'de Graaff',       by:1962, dy:1964, g:'m', gen:3, sur:'De Graaff',       land:'Nederland',  bmd:'05-25' },
+  { name:'Hedwig L.C. de Graaff',       firstName:'Hedwig',    lastName:'de Graaff',       by:1966, dy:null, g:'f', gen:3, sur:'De Graaff',       land:'Nederland',  bmd:'08-04' },
+  { name:'Willy J.C. van der Worp',     firstName:'Willy vdW', lastName:'van der Worp',    by:1978, dy:null, g:'f', gen:3, sur:'Van der Worp',    land:'Nederland',  bmd:'08-28' },
   // Gen 4
-  { name:'Tamara José Jansen',          by:1975, dy:null, g:'f', gen:4, sur:'Jansen',       land:'Nederland' },
-  { name:'David Mijnheer',              by:1973, dy:null, g:'m', gen:4, sur:'Mijnheer',     land:'Nederland' },
-  { name:'Daniel Pieter Deenen',        by:1973, dy:null, g:'m', gen:4, sur:'Deenen',       land:'Nederland' },
-  { name:'Nicole C.H. Frank',           by:1972, dy:null, g:'f', gen:4, sur:'Frank',        land:'Duitsland' },
-  { name:'Manon Simone de Graaff',      by:1976, dy:null, g:'f', gen:4, sur:'De Graaff',   land:'Nederland' },
-  { name:'Joost B.J. Lighart',          by:1967, dy:null, g:'m', gen:4, sur:'Lighart',      land:'Nederland' },
-  { name:'Daniel Liam de Graaff',       by:1994, dy:null, g:'m', gen:4, sur:'De Graaff',   land:'Nederland' },
-  { name:'Denise Hameka',               by:1995, dy:null, g:'f', gen:4, sur:'Hameka',       land:'Nederland' },
-  { name:'Bas Arnout de Graaff',        by:2001, dy:null, g:'m', gen:4, sur:'De Graaff',   land:'Nederland' },
-  { name:'Aminata Gnagna Seye',         by:2003, dy:null, g:'f', gen:4, sur:'Seye',         land:'Frankrijk' },
-  { name:'Albert Eduard F. Smallenbroek', by:1991, dy:null, g:'m', gen:4, sur:'Smallenbroek', land:'Nederland' },
-  { name:'Kay-Marie Schellenberg',      by:1991, dy:null, g:'f', gen:4, sur:'Schellenberg', land:'Filipijnen' },
-  { name:'Henk W.A. Smallenbroek',      by:1993, dy:null, g:'m', gen:4, sur:'Smallenbroek', land:'Nederland' },
-  { name:'Timme Ben A. de Graaff',      by:2009, dy:null, g:'m', gen:4, sur:'De Graaff',   land:'Nederland' },
+  { name:'Tamara José Jansen',          firstName:'Tamara',    lastName:'Jansen',           by:1975, dy:null, g:'f', gen:4, sur:'Jansen',           land:'Nederland',  bmd:'12-17' },
+  { name:'David Mijnheer',              firstName:'David',     lastName:'Mijnheer',         by:1973, dy:null, g:'m', gen:4, sur:'Mijnheer',         land:'Nederland',  bmd:'12-20' },
+  { name:'Daniel Pieter Deenen',        firstName:'Daniel P.', lastName:'Deenen',           by:1973, dy:null, g:'m', gen:4, sur:'Deenen',           land:'Nederland',  bmd:'08-18' },
+  { name:'Nicole C.H. Frank',           firstName:'Nicole',    lastName:'Frank',            by:1972, dy:null, g:'f', gen:4, sur:'Frank',            land:'Duitsland',  bmd:'09-30' },
+  { name:'Manon Simone de Graaff',      firstName:'Manon',     lastName:'de Graaff',       by:1976, dy:null, g:'f', gen:4, sur:'De Graaff',       land:'Nederland',  bmd:'03-08' },
+  { name:'Joost B.J. Lighart',          firstName:'Joost',     lastName:'Lighart',          by:1967, dy:null, g:'m', gen:4, sur:'Lighart',          land:'Nederland',  bmd:'12-11' },
+  { name:'Daniel Liam de Graaff',       firstName:'Daniel Liam',lastName:'de Graaff',      by:1994, dy:null, g:'m', gen:4, sur:'De Graaff',       land:'Nederland',  bmd:'03-27' },
+  { name:'Denise Hameka',               firstName:'Denise',    lastName:'Hameka',           by:1995, dy:null, g:'f', gen:4, sur:'Hameka',           land:'Nederland',  bmd:'09-12' },
+  { name:'Bas Arnout de Graaff',        firstName:'Bas',       lastName:'de Graaff',       by:2001, dy:null, g:'m', gen:4, sur:'De Graaff',       land:'Nederland',  bmd:'09-21' },
+  { name:'Aminata Gnagna Seye',         firstName:'Aminata',   lastName:'Seye',             by:2003, dy:null, g:'f', gen:4, sur:'Seye',             land:'Frankrijk',  bmd:'08-06' },
+  { name:'Albert Eduard F. Smallenbroek', firstName:'Albert E.',lastName:'Smallenbroek',   by:1991, dy:null, g:'m', gen:4, sur:'Smallenbroek',    land:'Nederland',  bmd:'08-21' },
+  { name:'Kay-Marie Schellenberg',      firstName:'Kay-Marie', lastName:'Schellenberg',     by:1991, dy:null, g:'f', gen:4, sur:'Schellenberg',     land:'Filipijnen', bmd:'11-24' },
+  { name:'Henk W.A. Smallenbroek',      firstName:'Henk',      lastName:'Smallenbroek',    by:1993, dy:null, g:'m', gen:4, sur:'Smallenbroek',    land:'Nederland',  bmd:'01-31' },
+  { name:'Timme Ben A. de Graaff',      firstName:'Timme',     lastName:'de Graaff',       by:2009, dy:null, g:'m', gen:4, sur:'De Graaff',       land:'Nederland',  bmd:'02-03' },
   // Gen 5
-  { name:'Noah Niek Jef Mijnheer',      by:2006, dy:null, g:'m', gen:5, sur:'Mijnheer',    land:'Nederland' },
-  { name:'Levi Samuel Mijnheer',        by:2007, dy:null, g:'m', gen:5, sur:'Mijnheer',    land:'Nederland' },
-  { name:'Kyra Danique Deenen',         by:2007, dy:null, g:'f', gen:5, sur:'Deenen',      land:'Nederland' },
-  { name:'Lars Tijmen Kesimaat',        by:2003, dy:null, g:'m', gen:5, sur:'Kesimaat',    land:'Nederland' },
-  { name:'Sven Jelmer Kesimaat',        by:2005, dy:null, g:'m', gen:5, sur:'Kesimaat',    land:'Nederland' },
-  { name:'Jort Martijn Kesimaat',       by:2005, dy:null, g:'m', gen:5, sur:'Kesimaat',    land:'Nederland' },
-  { name:'Jaelynn Denise de Graaff',    by:2016, dy:null, g:'f', gen:5, sur:'De Graaff',   land:'Nederland' },
-  { name:'Nia Amayel Seye-de Graaff',   by:2025, dy:null, g:'f', gen:5, sur:'Seye-De Graaff', land:'Nederland' },
-  { name:'Elle-Yvi Juul Smallenbroek',  by:2019, dy:null, g:'f', gen:5, sur:'Smallenbroek', land:'Nederland' },
-  { name:'Ysah Harley Smallenbroek',    by:2022, dy:null, g:'f', gen:5, sur:'Smallenbroek', land:'Nederland' },
+  { name:'Noah Niek Jef Mijnheer',      firstName:'Noah',      lastName:'Mijnheer',         by:2006, dy:null, g:'m', gen:5, sur:'Mijnheer',        land:'Nederland',  bmd:'01-19' },
+  { name:'Levi Samuel Mijnheer',        firstName:'Levi',      lastName:'Mijnheer',         by:2007, dy:null, g:'m', gen:5, sur:'Mijnheer',        land:'Nederland',  bmd:'05-05' },
+  { name:'Kyra Danique Deenen',         firstName:'Kyra',      lastName:'Deenen',           by:2007, dy:null, g:'f', gen:5, sur:'Deenen',          land:'Nederland',  bmd:'03-27' },
+  { name:'Lars Tijmen Kesimaat',        firstName:'Lars',      lastName:'Kesimaat',         by:2003, dy:null, g:'m', gen:5, sur:'Kesimaat',        land:'Nederland',  bmd:'07-15' },
+  { name:'Sven Jelmer Kesimaat',        firstName:'Sven',      lastName:'Kesimaat',         by:2005, dy:null, g:'m', gen:5, sur:'Kesimaat',        land:'Nederland',  bmd:'06-01' },
+  { name:'Jort Martijn Kesimaat',       firstName:'Jort',      lastName:'Kesimaat',         by:2005, dy:null, g:'m', gen:5, sur:'Kesimaat',        land:'Nederland',  bmd:'06-01' },
+  { name:'Jaelynn Denise de Graaff',    firstName:'Jaelynn',   lastName:'de Graaff',       by:2016, dy:null, g:'f', gen:5, sur:'De Graaff',       land:'Nederland',  bmd:'10-29' },
+  { name:'Nia Amayel Seye-de Graaff',   firstName:'Nia',       lastName:'Seye-de Graaff',  by:2025, dy:null, g:'f', gen:5, sur:'Seye-De Graaff',  land:'Nederland',  bmd:'07-06' },
+  { name:'Elle-Yvi Juul Smallenbroek',  firstName:'Elle-Yvi',  lastName:'Smallenbroek',    by:2019, dy:null, g:'f', gen:5, sur:'Smallenbroek',    land:'Nederland',  bmd:'04-29' },
+  { name:'Ysah Harley Smallenbroek',    firstName:'Ysah',      lastName:'Smallenbroek',    by:2022, dy:null, g:'f', gen:5, sur:'Smallenbroek',    land:'Nederland',  bmd:'10-01' },
 ];
 
 // ════════════════════════════════════════════════════════
@@ -1361,6 +1387,8 @@ function renderStats() {
     ul.innerHTML = records.map(r =>
       `<li class="rec-item"><span class="rec-n">${esc(r.n)}</span><span class="rec-v">${esc(r.v)}</span></li>`
     ).join('');
+
+    renderFunFacts();
   });
 }
 
@@ -1510,6 +1538,407 @@ function showPanel(title, persons) {
 
 function closePanel() {
   document.getElementById('stat-panel').classList.remove('open');
+}
+
+// ════════════════════════════════════════════════════════
+//  STAR SIGN + FUN FACTS
+// ════════════════════════════════════════════════════════
+
+function starSign(bmd) {
+  if (!bmd) return '?';
+  const [ms, ds] = bmd.split('-');
+  const md = parseInt(ms) * 100 + parseInt(ds);
+  if (md>=321&&md<=419) return 'Aries ♈';
+  if (md>=420&&md<=520) return 'Taurus ♉';
+  if (md>=521&&md<=620) return 'Gemini ♊';
+  if (md>=621&&md<=722) return 'Cancer ♋';
+  if (md>=723&&md<=822) return 'Leo ♌';
+  if (md>=823&&md<=922) return 'Virgo ♍';
+  if (md>=923&&md<=1022) return 'Libra ♎';
+  if (md>=1023&&md<=1121) return 'Scorpio ♏';
+  if (md>=1122&&md<=1221) return 'Sagittarius ♐';
+  if (md>=1222||md<=119) return 'Capricorn ♑';
+  if (md>=120&&md<=218) return 'Aquarius ♒';
+  return 'Pisces ♓';
+}
+
+function renderFunFacts() {
+  const container = document.getElementById('funfacts');
+  if (!container) return;
+  const cards = [];
+
+  const card = (emoji, text) =>
+    `<div style="background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:12px 14px">` +
+    `<div style="font-size:18px;margin-bottom:6px">${emoji}</div>` +
+    `<div style="font-size:11px;color:rgba(240,240,240,0.75);line-height:1.5">${text}</div></div>`;
+
+  // 1. Gedeelde verjaardagen
+  const bmdGroups = {};
+  people.forEach(p => {
+    if (p.bmd) bmdGroups[p.bmd] = (bmdGroups[p.bmd] || []).concat(p);
+  });
+  const sharedDates = Object.entries(bmdGroups)
+    .filter(([,arr]) => arr.length >= 2)
+    .sort((a,b) => b[1].length - a[1].length);
+  sharedDates.forEach(([bmd, arr]) => {
+    const [mm, dd] = bmd.split('-');
+    const dayFmt = `${parseInt(dd)} ${['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'][parseInt(mm)-1]}`;
+    const count = arr.length;
+    const numWords = ['','Eén','Twee','Drie','Vier','Vijf','Zes'];
+    const countWord = numWords[count] || count;
+    const names = arr.map(p => esc(p.firstName + ' ' + p.lastName));
+    let nameStr;
+    if (names.length === 2) nameStr = names[0] + ' en ' + names[1];
+    else nameStr = names.slice(0,-1).join(', ') + ' en ' + names[names.length-1];
+    cards.push(card('🎂', `${countWord} ${count===1?'persoon is':'personen zijn'} geboren op ${dayFmt}: ${nameStr}.`));
+  });
+
+  // 2. Sven & Jort tweeling
+  const sven = people.find(p => p.firstName === 'Sven' && p.sur === 'Kesimaat');
+  const jort = people.find(p => p.firstName === 'Jort' && p.sur === 'Kesimaat');
+  if (sven && jort) {
+    cards.push(card('👯', `Sven en Jort Kesimaat zijn tweelingen, geboren op 1 juni ${sven.by}.`));
+  }
+
+  // 3. Vader-dochter zelfde verjaardag
+  const guillaume = people.find(p => p.firstName === 'Guillaume');
+  const yvonne    = people.find(p => p.firstName === 'Yvonne' && p.sur === 'De Graaff');
+  if (guillaume && yvonne && guillaume.bmd === yvonne.bmd) {
+    const [mm, dd] = guillaume.bmd.split('-');
+    const dayFmt = `${parseInt(dd)} ${['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'][parseInt(mm)-1]}`;
+    cards.push(card('🎉', `Guillaume de Graaff (${guillaume.bmd.split('-').reverse().join('-')}-${guillaume.by}) en zijn dochter Yvonne (${yvonne.bmd.split('-').reverse().join('-')}-${yvonne.by}) zijn op dezelfde dag jarig: ${dayFmt}.`));
+  }
+
+  // 4. Meest voorkomende sterrenbeelden
+  const signCount = {};
+  people.forEach(p => {
+    const s = starSign(p.bmd);
+    if (s !== '?') signCount[s] = (signCount[s]||0)+1;
+  });
+  const signRanked = Object.entries(signCount).sort((a,b)=>b[1]-a[1]);
+  if (signRanked.length >= 3) {
+    const [s1,c1] = signRanked[0];
+    const [s2,c2] = signRanked[1];
+    const [s3,c3] = signRanked[2];
+    let txt = `Het meest voorkomende sterrenbeeld is ${esc(s1)} (${c1} ${c1===1?'persoon':'personen'})`;
+    if (c2 === c3) txt += `, gevolgd door ${esc(s2)} en ${esc(s3)} (elk ${c2}).`;
+    else txt += `, gevolgd door ${esc(s2)} (${c2}) en ${esc(s3)} (${c3}).`;
+    cards.push(card('✨', txt));
+  }
+
+  // 5. Valentijnsdag
+  const valPerson = people.find(p => p.bmd === '02-14');
+  if (valPerson) {
+    cards.push(card('💝', `${esc(valPerson.firstName + ' ' + valPerson.lastName)} is geboren op Valentijnsdag: 14 februari ${valPerson.by}.`));
+  }
+
+  // 6. Clara & Nicole – zelfde verjaardag 76 jaar uit elkaar
+  const clara  = people.find(p => p.firstName === 'Clara'  && p.sur === 'Rademaker');
+  const nicole = people.find(p => p.firstName === 'Nicole' && p.sur === 'Frank');
+  if (clara && nicole && clara.bmd === nicole.bmd) {
+    const [mm, dd] = clara.bmd.split('-');
+    const dayFmt = `${parseInt(dd)}-${mm.padStart(2,'0')}`;
+    cards.push(card('📅', `Clara Rademaker (${dayFmt}-${clara.by}) en Nicole Frank (${dayFmt}-${nicole.by}) delen dezelfde verjaardag — ${nicole.by - clara.by} jaar uit elkaar.`));
+  }
+
+  container.innerHTML = cards.join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  TIMELINE RENDERING
+// ════════════════════════════════════════════════════════
+
+const timelineEvents = [
+  // row 0 – Oorlogen (red #c0392b)
+  { label:'Eerste Wereldoorlog',            start:1914,    end:1918,    row:0, color:'#c0392b',
+    detail:'Nederland bleef neutraal maar ondervond grote economische gevolgen. Indische troepen beschermden de koloniën.' },
+  { label:'Tweede Wereldoorlog',            start:1939,    end:1945,    row:0, color:'#c0392b',
+    detail:'Duitsland bezette Nederland mei 1940 – mei 1945 (Hongerwinter 1944-45). Japan bezette Indië maart 1942.' },
+  // row 1 – Nederlands-Indië (orange #e67e22)
+  { label:'Japanse bezetting Indië',        start:1942,    end:1945,    row:1, color:'#e67e22',
+    detail:'Japan bezette Nederlands-Indië (mrt 1942 – aug 1945). ~100.000 Nederlanders geïnterneerd in kampen. Directe impact op de familie De Graaff in Indonesië.' },
+  { label:'1e Politionele Actie',           start:1947.55, end:1947.62, row:1, color:'#d68910',
+    detail:'Operatie Product: Nederlandse militaire campagne, 21 jul – 5 aug 1947. Doel: herovering verloren gebieden.' },
+  { label:'2e Politionele Actie',           start:1948.97, end:1949.02, row:1, color:'#d68910',
+    detail:'Operatie Kraai: tweede campagne, 19 dec 1948 – 5 jan 1949. Resulteerde in internationale veroordeling.' },
+  // row 2 – Politiek (green #27ae60)
+  { label:'Crisisjaren',                    start:1929,    end:1939,    row:2, color:'#7d6608',
+    detail:'Wereldwijde economische depressie. Grote werkloosheid in Nederland en stagnatie in de koloniën.' },
+  { label:'Indonesische onafhankelijkheid', start:1945.62, end:1949.98, row:2, color:'#27ae60',
+    detail:'Sukarno riep onafhankelijkheid uit op 17 aug 1945. Gewapende strijd en diplomatie tot soevereiniteitsoverdracht.' },
+  { label:'Soevereiniteitsoverdracht',      start:1949.95, end:1950.05, row:2, color:'#52be80',
+    detail:'Nederland erkende de Indonesische soevereiniteit op 27 december 1949. Einde van 350 jaar koloniale aanwezigheid.' },
+  // row 3 – Maatschappij (blue #2980b9 / teal)
+  { label:'Repatriëring Ind. Nederlanders', start:1945,   end:1967,    row:3, color:'#2980b9',
+    detail:'~300.000 Indische Nederlanders keerden terug naar Nederland. Familie De Graaff repatrieerde in 1954.' },
+  { label:'Wederopbouw & herstel',          start:1945,   end:1963,    row:3, color:'#117a65',
+    detail:'Naoorlogse wederopbouw. Marshallplan-hulp en economische groei in Nederland in de jaren 50 en 60.' },
+];
+
+const TL_EVT_CATS = ['Oorlogen','Ned.-Indië','Politiek','Maatschappij'];
+
+function renderTimeline() {
+  const container = document.getElementById('view-timeline');
+  const W = container.clientWidth || window.innerWidth;
+
+  const MARGIN = { left: 165, right: 20, top: 20, bottom: 20 };
+  const EVT_ROW_H  = 30;
+  const PER_ROW_H  = 18;
+  const AXIS_H     = 40;
+  const SEC_TITLE_H = 28;
+  const NUM_EVT_ROWS = 4;
+  const SECTION_A_Y = MARGIN.top;
+  const SECTION_B_Y = SECTION_A_Y + SEC_TITLE_H;
+  const SECTION_C_Y = SECTION_B_Y + NUM_EVT_ROWS * EVT_ROW_H;
+  const SECTION_D_Y = SECTION_C_Y + AXIS_H;
+  const SECTION_E_Y = SECTION_D_Y + SEC_TITLE_H;
+
+  const sortedPeople = [...people].sort((a,b) => a.by - b.by);
+  const TOTAL_H = SECTION_E_Y + sortedPeople.length * PER_ROW_H + MARGIN.bottom + 20;
+
+  const svg = d3.select('#timeline-svg')
+    .attr('width', W)
+    .attr('height', TOTAL_H);
+
+  svg.selectAll('*').remove();
+
+  const xBase = d3.scaleLinear()
+    .domain([1888, 2028])
+    .range([MARGIN.left, W - MARGIN.right]);
+
+  // Clip path
+  const clipId = 'tl-clip';
+  svg.append('defs').append('clipPath').attr('id', clipId)
+    .append('rect')
+    .attr('x', MARGIN.left).attr('y', 0)
+    .attr('width', W - MARGIN.left - MARGIN.right)
+    .attr('height', TOTAL_H);
+
+  // ── Section A: HISTORISCHE CONTEXT title ──
+  svg.append('text')
+    .attr('x', MARGIN.left)
+    .attr('y', SECTION_A_Y + 14)
+    .attr('font-size', 11)
+    .attr('font-weight', 600)
+    .attr('font-family', 'Inter,sans-serif')
+    .attr('fill', 'rgba(255,255,255,0.40)')
+    .attr('text-transform', 'uppercase')
+    .attr('letter-spacing', '0.09em')
+    .text('HISTORISCHE CONTEXT');
+
+  // ── Section B: Event rows ──
+  const evtG = svg.append('g').attr('clip-path', `url(#${clipId})`);
+
+  // Decade gridlines (behind events)
+  const gridG = evtG.append('g').attr('class','tl-gridlines');
+  const gridYTop    = SECTION_B_Y;
+  const gridYBottom = SECTION_E_Y + sortedPeople.length * PER_ROW_H + 10;
+
+  function drawGridlines(xScale) {
+    gridG.selectAll('line').remove();
+    for (let yr = 1890; yr <= 2030; yr += 10) {
+      const gx = xScale(yr);
+      gridG.append('line')
+        .attr('class','tl-grid')
+        .attr('x1', gx).attr('x2', gx)
+        .attr('y1', gridYTop).attr('y2', gridYBottom)
+        .attr('stroke', 'rgba(255,255,255,0.06)')
+        .attr('stroke-width', 1);
+    }
+  }
+  drawGridlines(xBase);
+
+  // Category labels (left margin, outside clip)
+  TL_EVT_CATS.forEach((cat, i) => {
+    const cy = SECTION_B_Y + i * EVT_ROW_H + EVT_ROW_H / 2;
+    svg.append('text')
+      .attr('x', MARGIN.left - 6)
+      .attr('y', cy)
+      .attr('text-anchor', 'end')
+      .attr('dominant-baseline', 'middle')
+      .attr('font-size', 10)
+      .attr('font-family', 'Inter,sans-serif')
+      .attr('fill', 'rgba(255,255,255,0.35)')
+      .text(cat);
+  });
+
+  // Event rects and labels
+  const evtRects = evtG.selectAll('.tl-evt-rect')
+    .data(timelineEvents)
+    .enter().append('rect')
+    .attr('class','tl-evt-rect')
+    .attr('x',      d => xBase(d.start))
+    .attr('y',      d => SECTION_B_Y + d.row * EVT_ROW_H + 4)
+    .attr('width',  d => Math.max(0, xBase(d.end) - xBase(d.start)))
+    .attr('height', EVT_ROW_H - 8)
+    .attr('rx', 3)
+    .attr('fill', d => d.color)
+    .attr('fill-opacity', 0.35)
+    .attr('cursor','pointer')
+    .on('mouseover', function(ev,d) {
+      d3.select(this).attr('fill-opacity', 0.65);
+      showTooltip(
+        `<div class="tt-title">${esc(d.label)}</div>` +
+        `<div class="tt-row">${Math.floor(d.start)} – ${Math.ceil(d.end)}</div>` +
+        `<hr class="tt-sep"><div class="tt-row">${esc(d.detail)}</div>`,
+        ev.clientX, ev.clientY
+      );
+    })
+    .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
+    .on('mouseout',  function(ev,d) { d3.select(this).attr('fill-opacity', 0.35); hideTooltip(); });
+
+  const evtLabels = evtG.selectAll('.tl-evt-label')
+    .data(timelineEvents)
+    .enter().append('text')
+    .attr('class','tl-evt-label')
+    .attr('x', d => xBase(d.start) + 4)
+    .attr('y', d => SECTION_B_Y + d.row * EVT_ROW_H + EVT_ROW_H / 2)
+    .attr('dominant-baseline','middle')
+    .attr('font-size', 9)
+    .attr('font-family','Inter,sans-serif')
+    .attr('fill','rgba(255,255,255,0.85)')
+    .attr('pointer-events','none')
+    .text(d => {
+      const bw = xBase(d.end) - xBase(d.start);
+      return bw >= 40 ? d.label : '';
+    });
+
+  // ── Section C: Decade axis ──
+  const axisG = svg.append('g')
+    .attr('class','tl-axis')
+    .attr('transform', `translate(0,${SECTION_C_Y})`);
+
+  function redrawAxis(xScale) {
+    axisG.call(
+      d3.axisBottom(xScale)
+        .tickValues(d3.range(1890, 2031, 10))
+        .tickFormat(d3.format('d'))
+    );
+    axisG.select('.domain').attr('stroke','rgba(255,255,255,0.2)');
+    axisG.selectAll('.tick line').attr('stroke','rgba(255,255,255,0.2)');
+    axisG.selectAll('.tick text')
+      .attr('fill','rgba(255,255,255,0.4)')
+      .attr('font-size', 10)
+      .attr('font-family','Inter,sans-serif');
+  }
+  redrawAxis(xBase);
+
+  // ── Section D: FAMILIELEDEN title ──
+  svg.append('text')
+    .attr('x', MARGIN.left)
+    .attr('y', SECTION_D_Y + 14)
+    .attr('font-size', 11)
+    .attr('font-weight', 600)
+    .attr('font-family', 'Inter,sans-serif')
+    .attr('fill', 'rgba(255,255,255,0.40)')
+    .text('FAMILIELEDEN');
+
+  // ── Section E: Person rows ──
+  const genColorsArr = ['#c9a96e','#7eb8d4','#8bc49a','#d47e7e','#b07ed4'];
+  const perG = svg.append('g').attr('clip-path', `url(#${clipId})`);
+
+  const TODAY_Y = 2026;
+
+  // Name labels (left margin, outside clip)
+  sortedPeople.forEach((p, i) => {
+    const py = SECTION_E_Y + i * PER_ROW_H;
+    const col = genColorsArr[(p.gen||1)-1];
+    const isDeceased = !!p.dy;
+
+    // Name label
+    svg.append('text')
+      .attr('x', MARGIN.left - 6)
+      .attr('y', py + PER_ROW_H / 2)
+      .attr('text-anchor','end')
+      .attr('dominant-baseline','middle')
+      .attr('font-size', 9)
+      .attr('font-family','Inter,sans-serif')
+      .attr('fill','rgba(255,255,255,0.6)')
+      .text(clip((p.firstName||'') + ' ' + (p.lastName||p.name||''), 24));
+
+    // Bar
+    const barEnd = p.dy || TODAY_Y;
+    const bx = xBase(p.by);
+    const bw = Math.max(2, xBase(barEnd) - xBase(p.by));
+
+    perG.append('rect')
+      .attr('class','tl-per-bar')
+      .attr('data-i', i)
+      .attr('x', bx)
+      .attr('y', py + (PER_ROW_H - 12) / 2)
+      .attr('width', bw)
+      .attr('height', 12)
+      .attr('rx', 3)
+      .attr('fill', col)
+      .attr('fill-opacity', isDeceased ? 0.45 : 0.72)
+      .attr('cursor','pointer')
+      .on('mouseover', function(ev) {
+        d3.select(this).attr('fill-opacity', 0.95);
+        const age = (p.dy||TODAY_Y) - p.by;
+        showTooltip(
+          `<div class="tt-title">${esc(p.firstName + ' ' + p.lastName)}</div>` +
+          `<div class="tt-row">Geb. ${p.by}${p.bmd ? ' (' + p.bmd + ')' : ''}</div>` +
+          (p.dy ? `<div class="tt-row">Ovl. ${p.dy}</div>` : `<div class="tt-row" style="color:#8bc49a">Levend</div>`) +
+          `<div class="tt-row">${age} jaar &middot; Gen. ${p.gen} &middot; ${esc(p.land)}</div>`,
+          ev.clientX, ev.clientY
+        );
+      })
+      .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
+      .on('mouseout',  function() { d3.select(this).attr('fill-opacity', isDeceased ? 0.45 : 0.72); hideTooltip(); });
+
+    // Birth dot
+    perG.append('circle')
+      .attr('class','tl-per-dot')
+      .attr('data-i', i)
+      .attr('cx', xBase(p.by))
+      .attr('cy', py + PER_ROW_H / 2)
+      .attr('r', 4)
+      .attr('fill', col)
+      .attr('fill-opacity', isDeceased ? 0.45 : 0.72)
+      .attr('pointer-events','none');
+  });
+
+  // ── Zoom (x-only) ──
+  const zoom = d3.zoom()
+    .scaleExtent([1, 20])
+    .translateExtent([[MARGIN.left, -Infinity],[W - MARGIN.right, Infinity]])
+    .on('zoom', function(ev) {
+      if (ev.transform.k === 1 && ev.transform.x === 0) return;
+      const newX = ev.transform.rescaleX(xBase);
+
+      // Update gridlines
+      drawGridlines(newX);
+
+      // Update event rects
+      evtRects
+        .attr('x',     d => newX(d.start))
+        .attr('width', d => Math.max(0, newX(d.end) - newX(d.start)));
+
+      // Update event labels
+      evtLabels
+        .attr('x', d => newX(d.start) + 4)
+        .text(d => {
+          const bw = newX(d.end) - newX(d.start);
+          return bw >= 40 ? d.label : '';
+        });
+
+      // Update axis
+      redrawAxis(newX);
+
+      // Update person bars and dots
+      sortedPeople.forEach((p, i) => {
+        const barEnd = p.dy || TODAY_Y;
+        const bx = newX(p.by);
+        const bw = Math.max(2, newX(barEnd) - newX(p.by));
+        perG.selectAll(`.tl-per-bar[data-i="${i}"]`)
+          .attr('x', bx)
+          .attr('width', bw);
+        perG.selectAll(`.tl-per-dot[data-i="${i}"]`)
+          .attr('cx', newX(p.by));
+      });
+    });
+
+  svg.call(zoom);
 }
 
 // ════════════════════════════════════════════════════════
