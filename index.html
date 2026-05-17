@@ -899,20 +899,22 @@ async function renderMap() {
     .attr('class', 'border')
     .attr('d', path);
 
-  // Migration arcs
+  // Migration arcs — gebruik data-binding zodat we later per arc kunnen filteren
   const arcG = g.append('g');
-  migrationArcs.forEach(arc => {
-    const from = mapLocations.find(l => l.id === arc.from);
-    const to   = mapLocations.find(l => l.id === arc.to);
-    if (!from || !to) return;
-    const [x1, y1] = projection([from.lng, from.lat]);
-    const [x2, y2] = projection([to.lng, to.lat]);
-    const mx = (x1 + x2) / 2;
-    const my = (y1 + y2) / 2 - Math.hypot(x2 - x1, y2 - y1) * 0.22;
-    arcG.append('path')
-      .attr('class', 'migration-arc')
-      .attr('d', `M${x1},${y1} Q${mx},${my} ${x2},${y2}`);
-  });
+  arcG.selectAll('.migration-arc')
+    .data(migrationArcs)
+    .enter().append('path')
+    .attr('class', 'migration-arc')
+    .attr('d', arc => {
+      const from = mapLocations.find(l => l.id === arc.from);
+      const to   = mapLocations.find(l => l.id === arc.to);
+      if (!from || !to) return '';
+      const [x1, y1] = projection([from.lng, from.lat]);
+      const [x2, y2] = projection([to.lng, to.lat]);
+      const mx = (x1 + x2) / 2;
+      const my = (y1 + y2) / 2 - Math.hypot(x2 - x1, y2 - y1) * 0.22;
+      return `M${x1},${y1} Q${mx},${my} ${x2},${y2}`;
+    });
 
   // Marker groups
   const markerG = g.append('g');
@@ -934,8 +936,10 @@ async function renderMap() {
 
   // Main dot
   const baseR = { 1: 6, 2: 5.5, 3: 5, 4: 4.5, 5: 4 };
+  let currentK = 1;
+  let activeId = null;
 
-  markers.append('circle')
+  const dots = markers.append('circle')
     .attr('class', 'marker-dot')
     .attr('r', d => baseR[d.gen] || 4)
     .attr('fill', d => d.note ? 'transparent' : genColors[d.gen])
@@ -943,14 +947,40 @@ async function renderMap() {
     .attr('fill-opacity', d => d.note ? 0 : 0.85)
     .attr('stroke-dasharray', d => d.note ? '3,2.5' : null)
     .on('mouseover', function(ev, d) {
-      d3.select(this).attr('r', (baseR[d.gen] || 4) + 3);
+      d3.select(this).attr('r', (baseR[d.gen] || 4) / currentK + 2.5 / currentK);
       showTooltip(buildMapTooltip(d), ev.clientX, ev.clientY);
     })
     .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
     .on('mouseout', function(ev, d) {
-      d3.select(this).attr('r', baseR[d.gen] || 4);
+      d3.select(this).attr('r', (baseR[d.gen] || 4) / currentK);
       hideTooltip();
+    })
+    .on('click', function(ev, d) {
+      ev.stopPropagation();
+      const allArcs = arcG.selectAll('.migration-arc');
+      if (activeId === d.id) {
+        activeId = null;
+        allArcs.attr('opacity', 1).attr('stroke', null);
+        dots.attr('stroke-width', 1.5);
+      } else {
+        activeId = d.id;
+        allArcs.attr('opacity', 0.06).attr('stroke', null);
+        allArcs.filter(a => a.from === d.id || a.to === d.id)
+          .attr('opacity', 1)
+          .attr('stroke', 'rgba(201,169,110,0.75)');
+        dots.attr('stroke-width', 1.5);
+        d3.select(this).attr('stroke-width', 3);
+      }
     });
+
+  // Klik op kaartachtergrond om selectie op te heffen
+  svg.on('click', () => {
+    if (activeId !== null) {
+      activeId = null;
+      arcG.selectAll('.migration-arc').attr('opacity', 1).attr('stroke', null);
+      dots.attr('stroke-width', 1.5);
+    }
+  });
 
   // Labels for major / gen1-2 markers
   markers.filter(d => d.gen <= 2 || d.id === 'assen' || d.id === 'china')
@@ -962,8 +992,15 @@ async function renderMap() {
     .attr('fill', d => d.note ? 'rgba(255,255,255,0.35)' : genColors[d.gen])
     .text(d => d.name);
 
-  // Zoom
-  const zoom = d3.zoom().scaleExtent([0.5, 12]).on('zoom', ev => g.attr('transform', ev.transform));
+  // Zoom — markers tegenschalen zodat ze visueel even groot blijven
+  const zoom = d3.zoom().scaleExtent([0.5, 12]).on('zoom', ev => {
+    g.attr('transform', ev.transform);
+    currentK = ev.transform.k;
+    const k = currentK;
+    markerG.selectAll('.marker-dot').attr('r', d => (baseR[d.gen] || 4) / k);
+    markerG.selectAll('.marker-ring').attr('r', 11 / k).attr('stroke-width', 1 / k);
+    markerG.selectAll('.marker-label').attr('font-size', 9.5 / k);
+  });
   svg.call(zoom);
 }
 
