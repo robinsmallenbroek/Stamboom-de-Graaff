@@ -1489,9 +1489,7 @@ async function renderMap() {
     // floor = 1/k → visuele minimum blijft altijd 1px op scherm
     markerG.selectAll('.marker-dot').attr('r', d => Math.max(1 / currentK, (baseR[d.gen] || 4) / k15));
     markerG.selectAll('.marker-ring').attr('r', Math.max(1 / currentK, 11 / k15)).attr('stroke-width', 1 / currentK);
-    // Labels: zichtbaar bij laag zoom, fade weg naarmate je inzoomt
-    const lOp = currentK <= 2 ? 1 : Math.max(0, 1 - (currentK - 2) / 3);
-    markerG.selectAll('.marker-label').attr('opacity', lOp).attr('font-size', 9.5 / currentK);
+    markerG.selectAll('.marker-label').attr('font-size', 9.5 / currentK);
   });
   svg.call(zoom);
 
