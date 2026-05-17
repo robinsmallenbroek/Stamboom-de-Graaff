@@ -859,6 +859,7 @@ const treeData = {
               id: 'c3-4b-1',
               p1: { name: 'Daniel Liam de Graaff', born: '27-03-1994', bp: 'Assen' },
               p2: { name: 'Denise Hameka', born: '12-09-1995', bp: 'Assen' },
+              badge: 'Geadopteerd',
               children: [
                 { id: 'n8', p1: { name: 'Jaelynn Denise de Graaff', born: '29-10-2016', bp: 'Assen' }, children: [] }
               ]
@@ -884,7 +885,7 @@ const treeData = {
               p1: { name: 'Albert Eduard F. Smallenbroek', born: '21-08-1991', bp: 'Assen' },
               p2: { name: 'Kay-Marie Schellenberg', born: '24-11-1991', bp: 'Cagayan (Fil.)' },
               children: [
-                { id: 'n10', p1: { name: 'Elle-Yvi Juul Smallenbroek', born: '29-04-2019', bp: 'Assen' }, children: [] },
+                { id: 'n10', p1: { name: 'Aleiah Elle-Yvi Juul Smallenbroek', born: '29-04-2019', bp: 'Assen' }, children: [] },
                 { id: 'n11', p1: { name: 'Ysah Harley Smallenbroek', born: '01-10-2022', bp: 'Assen' }, children: [] }
               ]
             },
@@ -1071,6 +1072,7 @@ function showPersonCard(p) {
     <div class="pc-row"><span>${p.land}</span> · <span style="color:${gc}">Generatie ${p.gen}</span></div>
     ${sign ? `<div class="pc-row">Sterrenbeeld: <span>${esc(sign)}</span></div>` : ''}
     <div class="pc-row" style="margin-top:4px;color:${alive ? '#8bc49a' : '#d47e7e'}">${alive ? '● Levend' : '● Overleden'}</div>
+    ${p.note ? `<div class="pc-row" style="margin-top:4px;color:#c9a96e">ℹ ${esc(p.note)}</div>` : ''}
   `;
 
   const views = [
@@ -1573,7 +1575,7 @@ const people = [
   { name:'Nicole C.H. Frank',           firstName:'Nicole',    lastName:'Frank',            by:1972, dy:null, g:'f', gen:4, sur:'Frank',            land:'Duitsland',  bmd:'09-30' },
   { name:'Manon Simone de Graaff',      firstName:'Manon',     lastName:'de Graaff',       by:1976, dy:null, g:'f', gen:4, sur:'De Graaff',       land:'Nederland',  bmd:'03-08' },
   { name:'Joost B.J. Lighart',          firstName:'Joost',     lastName:'Lighart',          by:1967, dy:null, g:'m', gen:4, sur:'Lighart',          land:'Nederland',  bmd:'12-11' },
-  { name:'Daniel Liam de Graaff',       firstName:'Daniel Liam',lastName:'de Graaff',      by:1994, dy:null, g:'m', gen:4, sur:'De Graaff',       land:'Nederland',  bmd:'03-27' },
+  { name:'Daniel Liam de Graaff',       firstName:'Daniel Liam',lastName:'de Graaff',      by:1994, dy:null, g:'m', gen:4, sur:'De Graaff',       land:'Nederland',  bmd:'03-27', note:'Geadopteerd door Albert de Graaff' },
   { name:'Denise Hameka',               firstName:'Denise',    lastName:'Hameka',           by:1995, dy:null, g:'f', gen:4, sur:'Hameka',           land:'Nederland',  bmd:'09-12' },
   { name:'Bas Arnout de Graaff',        firstName:'Bas',       lastName:'de Graaff',       by:2001, dy:null, g:'m', gen:4, sur:'De Graaff',       land:'Nederland',  bmd:'09-21' },
   { name:'Aminata Gnagna Seye',         firstName:'Aminata',   lastName:'Seye',             by:2003, dy:null, g:'f', gen:4, sur:'Seye',             land:'Frankrijk',  bmd:'08-06' },
@@ -1590,7 +1592,7 @@ const people = [
   { name:'Jort Martijn Kesimaat',       firstName:'Jort',      lastName:'Kesimaat',         by:2005, dy:null, g:'m', gen:5, sur:'Kesimaat',        land:'Nederland',  bmd:'06-01' },
   { name:'Jaelynn Denise de Graaff',    firstName:'Jaelynn',   lastName:'de Graaff',       by:2016, dy:null, g:'f', gen:5, sur:'De Graaff',       land:'Nederland',  bmd:'10-29' },
   { name:'Nia Amayel Seye-de Graaff',   firstName:'Nia',       lastName:'Seye-de Graaff',  by:2025, dy:null, g:'f', gen:5, sur:'Seye-De Graaff',  land:'Nederland',  bmd:'07-06' },
-  { name:'Elle-Yvi Juul Smallenbroek',  firstName:'Elle-Yvi',  lastName:'Smallenbroek',    by:2019, dy:null, g:'f', gen:5, sur:'Smallenbroek',    land:'Nederland',  bmd:'04-29' },
+  { name:'Aleiah Elle-Yvi Juul Smallenbroek',  firstName:'Aleiah Elle-Yvi',  lastName:'Smallenbroek',    by:2019, dy:null, g:'f', gen:5, sur:'Smallenbroek',    land:'Nederland',  bmd:'04-29' },
   { name:'Ysah Harley Smallenbroek',    firstName:'Ysah',      lastName:'Smallenbroek',    by:2022, dy:null, g:'f', gen:5, sur:'Smallenbroek',    land:'Nederland',  bmd:'10-01' },
 ];
 
@@ -1994,7 +1996,7 @@ const timelineEvents = [
   // row 3 – Maatschappij (blue #2980b9 / teal)
   { label:'Repatriëring Ind. Nederlanders', start:1945,   end:1967,    row:3, color:'#2980b9',
     detail:'~300.000 Indische Nederlanders keerden terug naar Nederland. Familie De Graaff repatrieerde in 1954.' },
-  { label:'Wederopbouw & herstel',          start:1945,   end:1963,    row:3, color:'#117a65',
+  { label:'Wederopbouw & herstel',          start:1945,   end:1963,    row:4, color:'#117a65',
     detail:'Naoorlogse wederopbouw. Marshallplan-hulp en economische groei in Nederland in de jaren 50 en 60.' },
 ];
 
@@ -2009,7 +2011,7 @@ function renderTimeline() {
   const PER_ROW_H  = 18;
   const AXIS_H     = 40;
   const SEC_TITLE_H = 28;
-  const NUM_EVT_ROWS = 4;
+  const NUM_EVT_ROWS = 5;
   const SECTION_A_Y = MARGIN.top;
   const SECTION_B_Y = SECTION_A_Y + SEC_TITLE_H;
   const SECTION_C_Y = SECTION_B_Y + NUM_EVT_ROWS * EVT_ROW_H;
