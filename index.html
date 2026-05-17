@@ -406,6 +406,54 @@
     .rec-item:last-child { border-bottom: none; }
     .rec-n { font-size: 10.5px; color: rgba(240,240,240,0.65); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .rec-v { font-size: 10.5px; color: #c9a96e; font-weight: 500; white-space: nowrap; }
+
+    /* Klikbare stat-cards */
+    .sc-click { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .sc-click:hover { border-color: rgba(201,169,110,0.35); background: #1e1e1e; }
+
+    /* ── DETAIL PANEL ── */
+    #stat-panel {
+      position: fixed;
+      top: 60px; right: 0; bottom: 0;
+      width: 300px;
+      background: #111;
+      border-left: 1px solid rgba(255,255,255,0.09);
+      z-index: 80;
+      transform: translateX(100%);
+      transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+      display: flex;
+      flex-direction: column;
+    }
+    #stat-panel.open { transform: translateX(0); }
+
+    .sp-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 15px 16px 11px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0;
+    }
+    .sp-title { font-size: 12.5px; font-weight: 600; color: #c9a96e; }
+    .sp-cnt   { font-size: 11px; color: rgba(255,255,255,0.3); margin-left: 5px; }
+    .sp-close {
+      border: none; background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.5);
+      width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+      font-size: 12px; line-height: 24px; text-align: center;
+      font-family: inherit; transition: background 0.12s;
+    }
+    .sp-close:hover { background: rgba(255,255,255,0.13); color: #f0f0f0; }
+
+    .sp-body { overflow-y: auto; flex: 1; padding: 10px 12px 20px; }
+
+    .sp-person {
+      padding: 8px 10px; border-radius: 8px; margin-bottom: 6px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+      transition: background 0.12s;
+    }
+    .sp-person:hover { background: rgba(255,255,255,0.06); }
+    .sp-pname { font-size: 11px; font-weight: 500; color: rgba(240,240,240,0.88); margin-bottom: 4px; line-height: 1.35; }
+    .sp-pmeta { display: flex; gap: 7px; flex-wrap: wrap; font-size: 9.5px; color: rgba(255,255,255,0.38); }
+    .sp-alive { color: #8bc49a; }
+    .sp-dead  { color: #d47e7e; }
   </style>
 </head>
 <body>
@@ -503,6 +551,15 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Detail panel (statistieken) -->
+<div id="stat-panel">
+  <div class="sp-head">
+    <div><span class="sp-title" id="sp-title"></span><span class="sp-cnt" id="sp-cnt"></span></div>
+    <button class="sp-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="sp-body" id="sp-body"></div>
 </div>
 
 <!-- Tooltip -->
@@ -1225,37 +1282,54 @@ function renderStats() {
   document.getElementById('s-span').textContent     = Y - earliest;
   document.getElementById('s-span-sub').textContent = `${earliest} – ${Y}`;
 
+  // Klikbare grote getallen-cards
+  [
+    ['s-total',    'Alle personen',      p => true],
+    ['s-living',   'Levende personen',   p => !p.dy],
+    ['s-deceased', 'Overleden personen', p => !!p.dy],
+    ['s-men',      'Mannen',             p => p.g === 'm'],
+    ['s-women',    'Vrouwen',            p => p.g === 'f'],
+    ['s-avgm',     'Overleden mannen',   p => !!p.dy && p.g === 'm'],
+    ['s-avgf',     'Overleden vrouwen',  p => !!p.dy && p.g === 'f'],
+  ].forEach(([id, title, fn]) => {
+    const card = document.getElementById(id)?.closest('.sc');
+    if (card) { card.classList.add('sc-click'); card.addEventListener('click', () => showPanel(title, people.filter(fn))); }
+  });
+
   requestAnimationFrame(() => {
     drawHBar('ch-gen', [1,2,3,4,5].map(g => ({
       label: `Generatie ${g}`,
       val: people.filter(p => p.gen === g).length,
-      color: ['#c9a96e','#7eb8d4','#8bc49a','#d47e7e','#b07ed4'][g-1]
+      color: ['#c9a96e','#7eb8d4','#8bc49a','#d47e7e','#b07ed4'][g-1],
+      filter: p => p.gen === g
     })), { labelW: 90, colorField: true });
 
     const landCount = {};
     people.forEach(p => { landCount[p.land] = (landCount[p.land]||0)+1; });
-    const lands = Object.entries(landCount).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,val:v}));
+    const lands = Object.entries(landCount).sort((a,b)=>b[1]-a[1])
+      .map(([l,v]) => ({ label:l, val:v, filter: p => p.land === l }));
     drawHBar('ch-country', lands, { labelW: 90, color: '#8bc49a' });
 
     const surCount = {};
     people.forEach(p => { surCount[p.sur] = (surCount[p.sur]||0)+1; });
-    const surs = Object.entries(surCount).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([s,v])=>({label:s,val:v}));
+    const surs = Object.entries(surCount).sort((a,b)=>b[1]-a[1]).slice(0,8)
+      .map(([s,v]) => ({ label:s, val:v, filter: p => p.sur === s }));
     drawHBar('ch-names', surs, { labelW: 105, color: '#c9a96e' });
 
     const decades = [];
     for (let d = 1890; d <= 2020; d += 10) {
-      decades.push({ label: `'${String(d).slice(2)}`, val: people.filter(p => p.by >= d && p.by < d+10).length });
+      const dStart = d;
+      decades.push({ label: `'${String(d).slice(2)}`, val: people.filter(p => p.by >= d && p.by < d+10).length,
+        filter: p => p.by >= dStart && p.by < dStart + 10 });
     }
     drawVBar('ch-years', decades);
 
-    // Leeftijdsverdeling levenden (buckets 0-9, 10-19, ... 70+)
+    // Leeftijdsverdeling levenden
     const ageBuckets = ['0–9','10–19','20–29','30–39','40–49','50–59','60–69','70+'];
     drawHBar('ch-ages', ageBuckets.map((lbl,i) => ({
       label: lbl + ' jr',
-      val: liv.filter(p => {
-        const a = Y - p.by;
-        return i < 7 ? (a >= i*10 && a < (i+1)*10) : a >= 70;
-      }).length
+      val: liv.filter(p => { const a = Y - p.by; return i < 7 ? (a >= i*10 && a < (i+1)*10) : a >= 70; }).length,
+      filter: p => { if (p.dy) return false; const a = Y - p.by; return i < 7 ? (a >= i*10 && a < (i+1)*10) : a >= 70; }
     })), { labelW: 56, color: '#8bc49a', rowH: 22 });
 
     // Leeftijd bij overlijden
@@ -1263,7 +1337,9 @@ function renderStats() {
     drawHBar('ch-death-ages', dBuckets.map((lbl,i) => {
       const ranges = [[0,10],[10,30],[30,50],[50,60],[60,70],[70,80],[80,90],[90,200]];
       const [lo,hi] = ranges[i];
-      return { label: lbl + ' jr', val: dec.filter(p=>{ const a=p.dy-p.by; return a>=lo&&a<hi; }).length };
+      return { label: lbl + ' jr',
+        val: dec.filter(p => { const a=p.dy-p.by; return a>=lo&&a<hi; }).length,
+        filter: p => { if (!p.dy) return false; const a=p.dy-p.by; return a>=lo&&a<hi; } };
     }), { labelW: 56, color: '#d47e7e', rowH: 22 });
 
     // Records
@@ -1302,36 +1378,51 @@ function drawHBar(svgId, data, opts = {}) {
   const rowH = opts.rowH || 26;
   const H = data.length * rowH + 6;
   const labelW = opts.labelW || 110;
-  const valW   = 32;
-  const barMax = Math.max(1, W - labelW - valW - 8);
+  const barMax = Math.max(1, W - labelW - 36);
   const maxVal = Math.max(1, ...data.map(d => d.val));
 
   el.setAttribute('height', H);
   el.setAttribute('viewBox', `0 0 ${W} ${H}`);
   el.innerHTML = '';
 
+  const mk = (tag, attrs) => {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k,v));
+    return e;
+  };
+
   data.forEach((d, i) => {
-    const y    = i * rowH;
-    const bw   = (d.val / maxVal) * barMax;
-    const col  = opts.colorField ? d.color : (opts.color || '#c9a96e');
-    const g    = document.createElementNS('http://www.w3.org/2000/svg','g');
+    const y   = i * rowH;
+    const bw  = (d.val / maxVal) * barMax;
+    const col = opts.colorField ? d.color : (opts.color || '#c9a96e');
+    const g   = document.createElementNS('http://www.w3.org/2000/svg','g');
 
-    const mk = (tag, attrs) => {
-      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-      Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
-      return el;
-    };
+    if (d.filter) {
+      g.setAttribute('cursor','pointer');
+      g.addEventListener('click', () => showPanel(d.label, people.filter(d.filter)));
+      g.addEventListener('mouseenter', () => {
+        const f = g.querySelector('.hfill'); if (f) f.setAttribute('fill-opacity','1');
+        const b = g.querySelector('.hbg');   if (b) b.setAttribute('fill','rgba(255,255,255,0.08)');
+      });
+      g.addEventListener('mouseleave', () => {
+        const f = g.querySelector('.hfill'); if (f) f.setAttribute('fill-opacity','0.82');
+        const b = g.querySelector('.hbg');   if (b) b.setAttribute('fill','rgba(255,255,255,0.04)');
+      });
+    }
 
-    g.appendChild(mk('text',{ x:0, y:y+rowH/2+1, 'dominant-baseline':'middle',
-      fill:'rgba(255,255,255,0.55)', 'font-size':10, 'font-family':'Inter,sans-serif',
-      textContent: undefined }));
-    g.lastChild.textContent = d.label;
+    const lt = mk('text',{ x:0, y:y+rowH/2+1, 'dominant-baseline':'middle',
+      fill:'rgba(255,255,255,0.55)', 'font-size':10, 'font-family':'Inter,sans-serif' });
+    lt.textContent = d.label;
+    g.appendChild(lt);
 
-    g.appendChild(mk('rect',{ x:labelW, y:y+5, width:barMax, height:rowH-12, rx:3,
-      fill:'rgba(255,255,255,0.04)' }));
+    const bg = mk('rect',{ x:labelW, y:y+5, width:barMax, height:rowH-12, rx:3,
+      fill:'rgba(255,255,255,0.04)', class:'hbg' });
+    g.appendChild(bg);
 
-    if (d.val > 0) g.appendChild(mk('rect',{ x:labelW, y:y+5, width:Math.max(3,bw), height:rowH-12,
-      rx:3, fill:col, 'fill-opacity':0.82 }));
+    if (d.val > 0) {
+      g.appendChild(mk('rect',{ x:labelW, y:y+5, width:Math.max(3,bw), height:rowH-12,
+        rx:3, fill:col, 'fill-opacity':0.82, class:'hfill' }));
+    }
 
     const vt = mk('text',{ x:W-2, y:y+rowH/2+1, 'dominant-baseline':'middle',
       'text-anchor':'end', fill: d.val>0 ? col : 'rgba(255,255,255,0.2)',
@@ -1355,34 +1446,75 @@ function drawVBar(svgId, data) {
   el.innerHTML = '';
 
   const maxVal = Math.max(1, ...data.map(d => d.val));
-  const bw     = W / data.length;
-  const pad    = bw * 0.18;
+  const bw  = W / data.length;
+  const pad = bw * 0.18;
+  const bw2 = bw - pad * 2;
+
+  const mk = (tag, attrs) => {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k,v));
+    return e;
+  };
 
   data.forEach((d, i) => {
     const barH = (d.val / maxVal) * iH;
     const x    = i * bw + pad;
     const y    = mT + iH - barH;
+    const g    = document.createElementNS('http://www.w3.org/2000/svg','g');
 
-    const mk = (tag, attrs) => {
-      const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
-      Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k,v));
-      return e;
-    };
-
-    if (d.val > 0) {
-      el.appendChild(mk('rect',{ x, y, width:bw-pad*2, height:barH, rx:2,
-        fill:'#c9a96e', 'fill-opacity': d.val > 0 ? 0.82 : 0 }));
-      const vt = mk('text',{ x:x+(bw-pad*2)/2, y:y-3, 'text-anchor':'middle',
-        fill:'rgba(255,255,255,0.45)', 'font-size':9, 'font-family':'Inter,sans-serif' });
-      vt.textContent = d.val;
-      el.appendChild(vt);
+    if (d.filter) {
+      g.setAttribute('cursor','pointer');
+      g.addEventListener('click', () => showPanel(`Geboortejaren ${d.label}`, people.filter(d.filter)));
+      g.addEventListener('mouseenter', () => { const r=g.querySelector('rect'); if(r) r.setAttribute('fill-opacity','1'); });
+      g.addEventListener('mouseleave', () => { const r=g.querySelector('rect'); if(r) r.setAttribute('fill-opacity','0.82'); });
     }
 
-    const xt = mk('text',{ x:x+(bw-pad*2)/2, y:H-4, 'text-anchor':'middle',
+    if (d.val > 0) {
+      g.appendChild(mk('rect',{ x, y, width:bw2, height:barH, rx:2, fill:'#c9a96e', 'fill-opacity':0.82 }));
+      const vt = mk('text',{ x:x+bw2/2, y:y-3, 'text-anchor':'middle',
+        fill:'rgba(255,255,255,0.45)', 'font-size':9, 'font-family':'Inter,sans-serif' });
+      vt.textContent = d.val;
+      g.appendChild(vt);
+    }
+
+    const xt = mk('text',{ x:x+bw2/2, y:H-4, 'text-anchor':'middle',
       fill:'rgba(255,255,255,0.32)', 'font-size':9, 'font-family':'Inter,sans-serif' });
     xt.textContent = d.label;
-    el.appendChild(xt);
+    g.appendChild(xt);
+    el.appendChild(g);
   });
+}
+
+function showPanel(title, persons) {
+  const Y = 2026;
+  document.getElementById('sp-title').textContent = title;
+  document.getElementById('sp-cnt').textContent   = `(${persons.length})`;
+
+  const sorted = [...persons].sort((a,b) => a.by - b.by);
+  document.getElementById('sp-body').innerHTML = sorted.length === 0
+    ? '<p style="font-size:11px;color:rgba(255,255,255,0.3);padding:8px 0">Geen personen</p>'
+    : sorted.map(p => {
+        const alive  = !p.dy;
+        const age    = alive ? Y - p.by : p.dy - p.by;
+        const years  = alive ? `geb. ${p.by}` : `${p.by} – ${p.dy}`;
+        const gIcon  = p.g === 'm' ? '♂' : '♀';
+        return `<div class="sp-person">
+          <div class="sp-pname">${esc(p.name)}</div>
+          <div class="sp-pmeta">
+            <span class="${alive ? 'sp-alive' : 'sp-dead'}">${alive ? '● levend' : '● overl.'}</span>
+            <span>${esc(years)}</span>
+            <span>${age} jr</span>
+            <span>${gIcon} · gen.${p.gen}</span>
+            <span>${esc(p.land)}</span>
+          </div>
+        </div>`;
+      }).join('');
+
+  document.getElementById('stat-panel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('stat-panel').classList.remove('open');
 }
 
 // ════════════════════════════════════════════════════════
