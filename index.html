@@ -1501,17 +1501,13 @@ async function renderMap() {
     }
   });
 
-  // Labels in een aparte bovenste groep zodat ze altijd boven alle dots liggen
-  const labelG = g.append('g');
+  // Labels buiten de gezoomde g-groep — direct op svg zodat ze altijd
+  // boven alles worden getekend, ongeacht zoom of positie van andere elementen
   const labelData = mapLocations.filter(d => d.gen <= 2 || d.id === 'assen');
-  const mapLabels = labelG.selectAll('.marker-label')
+  const mapLabels = svg.append('g').selectAll('.marker-label')
     .data(labelData)
     .enter().append('text')
     .attr('class', 'marker-label')
-    .attr('transform', d => {
-      const [px, py] = projection([d.lng, d.lat]);
-      return `translate(${px},${py})`;
-    })
     .attr('x', d => d.id === 'breda' ? -9 : 9)
     .attr('y', 0)
     .attr('dominant-baseline', 'middle')
@@ -1520,19 +1516,25 @@ async function renderMap() {
     .style('font-size', '9.5px')
     .text(d => d.name);
 
+  // Positioneer labels in schermcoördinaten (niet afhankelijk van zoom-transform)
+  function positionLabels(t) {
+    mapLabels.attr('transform', d => {
+      const [px, py] = projection([d.lng, d.lat]);
+      return `translate(${px * t.k + t.x},${py * t.k + t.y})`;
+    });
+  }
+  positionLabels(d3.zoomIdentity);
+
   // Zoom — dots krimpen via √k zodat ze kleiner worden naarmate je inzoomt
-  // maar minder snel dan de geografische spreiding groeit → goed onderscheidbaar
   const zoom = d3.zoom().scaleExtent([0.5, 100]).on('zoom', ev => {
     g.attr('transform', ev.transform);
     currentK = ev.transform.k;
     const k15 = Math.pow(currentK, 1.5);
-    // r in SVG-coördinaten; visuele straal = r * k → baseR / sqrt(k)
-    // floor = 1/k → visuele minimum blijft altijd 1px op scherm
     markerG.selectAll('.marker-dot').attr('r', d => Math.max(1 / currentK, (baseR[d.gen] || 4) / k15));
     markerG.selectAll('.marker-ring').attr('r', Math.max(1 / currentK, 11 / k15)).attr('stroke-width', 1 / currentK);
-    mapLabels
-      .style('font-size', Math.max(8 / currentK, 9.5 / Math.pow(currentK, 1.05)) + 'px')
-      .attr('x', d => (d.id === 'breda' ? -9 : 9) / currentK);
+    // Labels in schermcoördinaten: font-size direct in px, x altijd vast 9px
+    mapLabels.style('font-size', Math.max(8, 9.5 / Math.pow(currentK, 0.05)) + 'px');
+    positionLabels(ev.transform);
   });
   svg.call(zoom);
 
