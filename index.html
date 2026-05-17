@@ -1982,25 +1982,25 @@ const timelineEvents = [
   // row 1 – Nederlands-Indië (orange #e67e22)
   { label:'Japanse bezetting Indië',        start:1942,    end:1945,    row:1, color:'#e67e22',
     detail:'Japan bezette Nederlands-Indië (mrt 1942 – aug 1945). ~100.000 Nederlanders geïnterneerd in kampen. Directe impact op de familie De Graaff in Indonesië.' },
-  { label:'1e Politionele Actie',           start:1947.55, end:1947.62, row:1, color:'#d68910',
+  { label:'1e Politionele Actie',           start:1947.55, end:1947.62, row:2, color:'#d68910',
     detail:'Operatie Product: Nederlandse militaire campagne, 21 jul – 5 aug 1947. Doel: herovering verloren gebieden.' },
-  { label:'2e Politionele Actie',           start:1948.97, end:1949.02, row:1, color:'#d68910',
+  { label:'2e Politionele Actie',           start:1948.97, end:1949.02, row:2, color:'#d68910',
     detail:'Operatie Kraai: tweede campagne, 19 dec 1948 – 5 jan 1949. Resulteerde in internationale veroordeling.' },
   // row 2 – Politiek (green #27ae60)
-  { label:'Crisisjaren',                    start:1929,    end:1939,    row:2, color:'#7d6608',
+  { label:'Crisisjaren',                    start:1929,    end:1939,    row:3, color:'#7d6608',
     detail:'Wereldwijde economische depressie. Grote werkloosheid in Nederland en stagnatie in de koloniën.' },
-  { label:'Indonesische onafhankelijkheid', start:1945.62, end:1949.98, row:2, color:'#27ae60',
+  { label:'Indonesische onafhankelijkheid', start:1945.62, end:1949.98, row:3, color:'#27ae60',
     detail:'Sukarno riep onafhankelijkheid uit op 17 aug 1945. Gewapende strijd en diplomatie tot soevereiniteitsoverdracht.' },
-  { label:'Soevereiniteitsoverdracht',      start:1949.95, end:1950.05, row:2, color:'#52be80',
+  { label:'Soevereiniteitsoverdracht',      start:1949.95, end:1950.05, row:3, color:'#52be80',
     detail:'Nederland erkende de Indonesische soevereiniteit op 27 december 1949. Einde van 350 jaar koloniale aanwezigheid.' },
   // row 3 – Maatschappij (blue #2980b9 / teal)
-  { label:'Repatriëring Ind. Nederlanders', start:1945,   end:1967,    row:3, color:'#2980b9',
+  { label:'Repatriëring Ind. Nederlanders', start:1945,   end:1967,    row:4, color:'#2980b9',
     detail:'~300.000 Indische Nederlanders keerden terug naar Nederland. Familie De Graaff repatrieerde in 1954.' },
-  { label:'Wederopbouw & herstel',          start:1945,   end:1963,    row:4, color:'#117a65',
+  { label:'Wederopbouw & herstel',          start:1945,   end:1963,    row:5, color:'#117a65',
     detail:'Naoorlogse wederopbouw. Marshallplan-hulp en economische groei in Nederland in de jaren 50 en 60.' },
 ];
 
-const TL_EVT_CATS = ['Oorlogen','Ned.-Indië','Politiek','Migratie','Wederopbouw'];
+const TL_EVT_CATS = ['Oorlogen','Ned.-Indië','Pol. Acties','Politiek','Migratie','Wederopbouw'];
 
 // Familiegebeurtenissen – kan later worden aangevuld
 // Formaat: { label, start, end, row, color, detail }
@@ -2018,7 +2018,7 @@ function renderTimeline() {
   const AXIS_H      = 40;
   const SEC_TITLE_H = 28;
   const GAP         = 14;
-  const NUM_EVT_ROWS = 5;
+  const NUM_EVT_ROWS = 6;
   const NUM_FAM_ROWS = familyEvents.length > 0
     ? Math.max(...familyEvents.map(e => e.row || 0)) + 1 : 1;
 
@@ -2115,12 +2115,21 @@ function renderTimeline() {
     hideTooltip();
   }
 
+  // Label helpers: inside bar when wide enough, else just right of bar
+  function lblX(xs, d) {
+    const bw = xs(d.end) - xs(d.start);
+    return bw >= 40 ? xs(d.start) + 4 : xs(d.end) + 6;
+  }
+  function lblText(xs, d) {
+    return (xs(d.end) - xs(d.start)) >= 6 ? d.label : '';
+  }
+
   // ── Historical event rects ──
   const evtRects = clipG.selectAll('.tl-evt-rect').data(timelineEvents).enter().append('rect')
     .attr('class', 'tl-evt-rect')
     .attr('x',      d => xBase(d.start))
     .attr('y',      d => SECT_HIST_ROWS + d.row * EVT_ROW_H + 4)
-    .attr('width',  d => Math.max(0, xBase(d.end) - xBase(d.start)))
+    .attr('width',  d => Math.max(6, xBase(d.end) - xBase(d.start)))
     .attr('height', EVT_ROW_H - 8).attr('rx', 3)
     .attr('fill', d => d.color).attr('fill-opacity', 0.35).attr('cursor', 'pointer')
     .on('mouseover', function(ev, d) { onEvtEnter(ev, d, this, 0.35); })
@@ -2129,11 +2138,12 @@ function renderTimeline() {
 
   const evtLabels = clipG.selectAll('.tl-evt-label').data(timelineEvents).enter().append('text')
     .attr('class', 'tl-evt-label')
-    .attr('x', d => xBase(d.start) + 4)
+    .attr('x', d => lblX(xBase, d))
     .attr('y', d => SECT_HIST_ROWS + d.row * EVT_ROW_H + EVT_ROW_H / 2)
     .attr('dominant-baseline', 'middle').attr('font-size', 9).attr('font-family', 'Inter,sans-serif')
-    .attr('fill', 'rgba(255,255,255,0.85)').attr('pointer-events', 'none')
-    .text(d => (xBase(d.end) - xBase(d.start)) >= 40 ? d.label : '');
+    .attr('fill', d => (xBase(d.end) - xBase(d.start)) >= 40 ? 'rgba(255,255,255,0.85)' : d.color)
+    .attr('pointer-events', 'none')
+    .text(d => lblText(xBase, d));
 
   // ── Section: FAMILIEGEBEURTENISSEN title ──
   svg.append('text')
@@ -2258,8 +2268,10 @@ function renderTimeline() {
       if (ev.transform.k === 1 && ev.transform.x === 0) return;
       xSc = ev.transform.rescaleX(xBase);
       drawGridlines(xSc);
-      evtRects.attr('x', d => xSc(d.start)).attr('width', d => Math.max(0, xSc(d.end) - xSc(d.start)));
-      evtLabels.attr('x', d => xSc(d.start) + 4).text(d => (xSc(d.end) - xSc(d.start)) >= 40 ? d.label : '');
+      evtRects.attr('x', d => xSc(d.start)).attr('width', d => Math.max(6, xSc(d.end) - xSc(d.start)));
+      evtLabels.attr('x', d => lblX(xSc, d))
+        .attr('fill', d => (xSc(d.end) - xSc(d.start)) >= 40 ? 'rgba(255,255,255,0.85)' : d.color)
+        .text(d => lblText(xSc, d));
       famRects.attr('x', d => xSc(d.start)).attr('width', d => Math.max(4, xSc(d.end || d.start + 0.5) - xSc(d.start)));
       famLabels.attr('x', d => xSc(d.start) + 4).text(d => (xSc(d.end || d.start + 0.5) - xSc(d.start)) >= 40 ? d.label : '');
       redrawAxis(xSc);
