@@ -794,14 +794,9 @@ const mapLocations = [
   { id: 'denhaag',    name: 'Den Haag',                 lat: 52.08,  lng: 4.30,   gen: 5,
     people: ['Nia Amayel Seye-de Graaff — geb. 2025'] },
 
-  // Chinese voorvader (mondelinge overlevering)
-  { id: 'china',      name: 'China (Shanghai)',          lat: 31.23,  lng: 121.47, gen: 1,
-    people: ['Voorvader/voormoeder uit China', '(mondelinge overlevering — niet gedocumenteerd in stamboom)'],
-    note: true }
 ];
 
 const migrationArcs = [
-  { from: 'china',    to: 'tjimahi',  label: 'Voorvader China' },
   { from: 'batavia',  to: 'assen',    label: 'Repatriëring 1954' },
   { from: 'sibolga',  to: 'brasil',   label: 'Emigratie' },
   { from: 'batavia',  to: 'breda',    label: 'Repatriëring' },
@@ -1148,7 +1143,7 @@ async function renderMap() {
   });
 
   // Labels for major / gen1-2 markers
-  markers.filter(d => d.gen <= 2 || d.id === 'assen' || d.id === 'china')
+  markers.filter(d => d.gen <= 2 || d.id === 'assen')
     .append('text')
     .attr('class', 'marker-label')
     .attr('x', d => d.id === 'breda' ? -8 : 9)
@@ -1214,7 +1209,7 @@ const people = [
   { name:'Yvonne J.A. de Graaff',       by:1953, dy:null, g:'f', gen:3, sur:'De Graaff',   land:'Indonesië' },
   { name:'Harald Frank',                by:1951, dy:2013, g:'m', gen:3, sur:'Frank',        land:'Duitsland' },
   { name:'Albert W.A. de Graaff',       by:1955, dy:2026, g:'m', gen:3, sur:'De Graaff',   land:'Nederland' },
-  { name:'Geertje van der Veen',        by:1952, dy:null, g:'f', gen:3, sur:'Van der Veen', land:'Noorwegen' },
+  { name:'Geertje van der Veen',        by:1952, dy:null, g:'f', gen:3, sur:'Van der Veen', land:'Nederland' },
   { name:'Christina Annette Krolis',    by:1963, dy:null, g:'f', gen:3, sur:'Krolis',       land:'Nederland' },
   { name:'Eleonora G.H. de Graaff',     by:1957, dy:null, g:'f', gen:3, sur:'De Graaff',   land:'Nederland' },
   { name:'Geert Smallenbroek',          by:1963, dy:2025, g:'m', gen:3, sur:'Smallenbroek', land:'Nederland' },
