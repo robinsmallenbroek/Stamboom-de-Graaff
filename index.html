@@ -1042,7 +1042,7 @@ function clearAllHighlights() {
   d3.select('#map-svg').selectAll('.pc-pulse-ring').remove();
   d3.select('#map-svg').selectAll('.marker-dot')
     .interrupt()
-    .attr('r', d => d ? Math.max(0.8, (_baseR[d.gen]||4) / Math.pow(_mapCurrentK, 1.5)) : 2)
+    .attr('r', d => d ? Math.max(1 / _mapCurrentK, (_baseR[d.gen]||4) / Math.pow(_mapCurrentK, 1.5)) : 2)
     .attr('fill-opacity', d => d && !d.note ? 0.85 : 0)
     .attr('stroke-width', 1.5);
   // Timeline: remove arrow, remove glow, restore all bars
@@ -1433,13 +1433,13 @@ async function renderMap() {
     .attr('fill-opacity', d => d.note ? 0 : 0.85)
     .attr('stroke-dasharray', d => d.note ? '3,2.5' : null)
     .on('mouseover', function(ev, d) {
-      const r = Math.max(0.8, (baseR[d.gen] || 4) / Math.pow(currentK, 1.5));
-      d3.select(this).attr('r', r + Math.max(0.5, 1.5 / Math.pow(currentK, 1.5)));
+      const r = Math.max(1 / currentK, (baseR[d.gen] || 4) / Math.pow(currentK, 1.5));
+      d3.select(this).attr('r', r + 2 / currentK);
       showTooltip(buildMapTooltip(d), ev.clientX, ev.clientY);
     })
     .on('mousemove', ev => positionTooltip(ev.clientX, ev.clientY))
     .on('mouseout', function(ev, d) {
-      d3.select(this).attr('r', Math.max(0.8, (baseR[d.gen] || 4) / Math.pow(currentK, 1.5)));
+      d3.select(this).attr('r', Math.max(1 / currentK, (baseR[d.gen] || 4) / Math.pow(currentK, 1.5)));
       hideTooltip();
     })
     .on('click', function(ev, d) {
@@ -1484,10 +1484,14 @@ async function renderMap() {
   const zoom = d3.zoom().scaleExtent([0.5, 100]).on('zoom', ev => {
     g.attr('transform', ev.transform);
     currentK = ev.transform.k;
-    const k2 = Math.pow(currentK, 1.5);
-    markerG.selectAll('.marker-dot').attr('r', d => Math.max(0.8, (baseR[d.gen] || 4) / k2));
-    markerG.selectAll('.marker-ring').attr('r', Math.max(1.5, 11 / k2)).attr('stroke-width', Math.max(0.3, 1 / k2));
-    markerG.selectAll('.marker-label').attr('font-size', Math.max(5, 9.5 / currentK));
+    const k15 = Math.pow(currentK, 1.5);
+    // r in SVG-coördinaten; visuele straal = r * k → baseR / sqrt(k)
+    // floor = 1/k → visuele minimum blijft altijd 1px op scherm
+    markerG.selectAll('.marker-dot').attr('r', d => Math.max(1 / currentK, (baseR[d.gen] || 4) / k15));
+    markerG.selectAll('.marker-ring').attr('r', Math.max(1 / currentK, 11 / k15)).attr('stroke-width', 1 / currentK);
+    // Labels: zichtbaar bij laag zoom, fade weg naarmate je inzoomt
+    const lOp = currentK <= 2 ? 1 : Math.max(0, 1 - (currentK - 2) / 3);
+    markerG.selectAll('.marker-label').attr('opacity', lOp).attr('font-size', 9.5 / currentK);
   });
   svg.call(zoom);
 
@@ -1504,8 +1508,8 @@ async function renderMap() {
     // Flash the marker
     markerG.selectAll('.marker-dot')
       .filter(d => d.id === loc.id)
-      .transition().duration(200).attr('r', d => (baseR[d.gen]||4)/Math.pow(k,1.5) * 3)
-      .transition().duration(400).attr('r', d => (baseR[d.gen]||4)/Math.pow(k,1.5));
+      .transition().duration(200).attr('r', d => Math.max(1/k, (baseR[d.gen]||4)/Math.pow(k,1.5)) * 3)
+      .transition().duration(400).attr('r', d => Math.max(1/k, (baseR[d.gen]||4)/Math.pow(k,1.5)));
   };
 }
 
