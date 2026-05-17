@@ -1251,11 +1251,29 @@ function renderTree() {
     });
 
   // Clickable overlays: top half → p1, bottom half → p2
+  // Gebruik findPerson voor match met people-array; bouw anders een fallback
+  // zodat ook nieuw toegevoegde personen altijd klikbaar zijn.
   ng.each(function(d) {
     const grp = d3.select(this);
-    const p1obj = d.data.p1 ? findPerson(d.data.p1.name) : null;
+
+    function personObjFrom(pdata, depth) {
+      if (!pdata || !pdata.name || pdata.name === 'Privépersoon') return null;
+      const found = findPerson(pdata.name);
+      if (found) return found;
+      // Fallback: maak een minimaal persoonsobject uit treedata
+      const bornYear = pdata.born ? parseInt(pdata.born.split('-').pop()) : null;
+      return {
+        name: pdata.name,
+        firstName: pdata.name.split(' ')[0],
+        lastName: pdata.name.split(' ').slice(-1)[0],
+        by: bornYear, dy: pdata.died ? parseInt(pdata.died.split('-').pop()) : null,
+        g: '?', gen: depth || 1, land: pdata.bp || '', bmd: null
+      };
+    }
+
+    const p1obj = personObjFrom(d.data.p1, d.depth);
     const hasP2 = d.data.p2 && d.data.p2.name && d.data.p2.name !== 'Privépersoon';
-    const p2obj = hasP2 ? findPerson(d.data.p2.name) : null;
+    const p2obj = hasP2 ? personObjFrom(d.data.p2, d.depth) : null;
     const splitY = hasP2 ? NH / 2 : NH;
 
     if (p1obj) {
