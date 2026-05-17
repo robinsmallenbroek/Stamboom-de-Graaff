@@ -412,6 +412,27 @@
     .sc-click:hover { border-color: rgba(201,169,110,0.35); background: #1e1e1e; }
 
     /* ── DETAIL PANEL ── */
+    /* ── PERSISTENT HIGHLIGHTS ── */
+    @keyframes pc-ring {
+      0%   { transform: scale(1);   opacity: 0.9; }
+      70%  { transform: scale(3.2); opacity: 0; }
+      100% { transform: scale(3.2); opacity: 0; }
+    }
+    .pc-pulse-ring {
+      transform-box: fill-box; transform-origin: center;
+      animation: pc-ring 1.6s ease-out infinite;
+      pointer-events: none; fill: none; stroke: #c9a96e; stroke-width: 2;
+    }
+    .pc-glow-node {
+      stroke: #c9a96e !important; stroke-width: 2.5px !important;
+      filter: drop-shadow(0 0 8px rgba(201,169,110,0.95));
+    }
+    .pc-glow-bar {
+      stroke: rgba(255,255,255,0.9) !important; stroke-width: 1.5px !important;
+      filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
+    }
+    .pc-dim { fill-opacity: 0.15 !important; }
+
     #stat-panel {
       position: fixed;
       top: 60px; right: 0; bottom: 0;
@@ -465,6 +486,47 @@
       background: linear-gradient(transparent, rgba(12,12,12,0.9));
       pointer-events: none;
     }
+
+    /* ── PASSWORD SCREEN ── */
+    #pw-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #0c0c0c;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #pw-screen.pw-hidden { display: none; }
+    .pw-box {
+      text-align: center; width: 320px;
+    }
+    .pw-title {
+      font-size: 22px; font-weight: 600; letter-spacing: -0.02em;
+      color: #f0f0f0; margin-bottom: 6px;
+    }
+    .pw-title em { font-style: normal; color: #c9a96e; }
+    .pw-sub {
+      font-size: 12px; color: rgba(255,255,255,0.35); margin-bottom: 28px;
+    }
+    .pw-form { display: flex; flex-direction: column; gap: 10px; }
+    .pw-input {
+      background: #181818; border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px; color: #f0f0f0; font-family: inherit;
+      font-size: 15px; padding: 12px 16px; text-align: center;
+      outline: none; letter-spacing: 0.05em; transition: border-color 0.2s;
+    }
+    .pw-input:focus { border-color: rgba(201,169,110,0.6); }
+    .pw-input.pw-error { border-color: #d47e7e; animation: pw-shake 0.3s ease; }
+    @keyframes pw-shake {
+      0%,100% { transform: translateX(0); }
+      25%      { transform: translateX(-6px); }
+      75%      { transform: translateX(6px); }
+    }
+    .pw-btn {
+      background: #c9a96e; border: none; border-radius: 10px;
+      color: #0c0c0c; font-family: inherit; font-size: 14px;
+      font-weight: 600; padding: 12px; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .pw-btn:hover { opacity: 0.85; }
+    .pw-hint { font-size: 11px; color: rgba(255,255,255,0.2); margin-top: 4px; }
 
     /* ── PERSON CARD ── */
     #person-card {
@@ -650,6 +712,19 @@
   <div class="sp-body" id="sp-body"></div>
 </div>
 
+<!-- Password screen -->
+<div id="pw-screen">
+  <div class="pw-box">
+    <h1 class="pw-title">Stamboom <em>De Graaff</em></h1>
+    <p class="pw-sub">Privé familiewebsite &mdash; voer het wachtwoord in</p>
+    <div class="pw-form">
+      <input id="pw-input" class="pw-input" type="password" placeholder="Wachtwoord" autocomplete="off">
+      <button class="pw-btn" onclick="checkPw()">Toegang</button>
+      <p class="pw-hint" id="pw-hint"></p>
+    </div>
+  </div>
+</div>
+
 <!-- Tooltip -->
 <div id="tooltip"></div>
 
@@ -657,6 +732,34 @@
 <script src="https://cdn.jsdelivr.net/npm/topojson@3/dist/topojson.min.js"></script>
 <script>
 'use strict';
+
+// ── PASSWORD GATE ──
+(function() {
+  if (sessionStorage.getItem('graaff_auth') === '1') {
+    document.getElementById('pw-screen').classList.add('pw-hidden');
+  }
+})();
+
+function checkPw() {
+  const val = document.getElementById('pw-input').value;
+  if (val === 'metdubbelf') {
+    sessionStorage.setItem('graaff_auth', '1');
+    document.getElementById('pw-screen').classList.add('pw-hidden');
+  } else {
+    const inp = document.getElementById('pw-input');
+    inp.classList.add('pw-error');
+    document.getElementById('pw-hint').textContent = 'Onjuist wachtwoord, probeer opnieuw.';
+    setTimeout(() => inp.classList.remove('pw-error'), 400);
+    inp.value = '';
+    inp.focus();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('pw-input');
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') checkPw(); });
+  if (!document.getElementById('pw-screen').classList.contains('pw-hidden')) inp.focus();
+});
 
 // ════════════════════════════════════════════════════════
 //  FAMILY TREE DATA
@@ -927,6 +1030,26 @@ let selectedPerson = null;
 let treeZoomTo     = null;   // set by renderTree
 let tlScrollTo     = null;   // set by renderTimeline
 const YEAR = 2026;
+let _mapCurrentK   = 1;      // current map zoom, updated by renderMap zoom handler
+
+const _baseR = { 1:6, 2:5.5, 3:5, 4:4.5, 5:4 };
+
+function clearAllHighlights() {
+  // Tree: remove glow class from all node rects
+  d3.select('#tree-svg').selectAll('.node-rect').classed('pc-glow-node', false);
+  // Map: stop pulsing, remove ring, restore dots
+  d3.select('#map-svg').selectAll('.pc-pulse-ring').remove();
+  d3.select('#map-svg').selectAll('.marker-dot')
+    .interrupt()
+    .attr('r', d => d ? Math.max(1.5, (_baseR[d.gen]||4) / Math.sqrt(_mapCurrentK)) : 4)
+    .attr('fill-opacity', d => d && !d.note ? 0.85 : 0)
+    .attr('stroke-width', 1.5);
+  // Timeline: remove arrow, remove glow, restore all bars
+  d3.select('#timeline-svg').selectAll('.pc-arrow').remove();
+  d3.select('#timeline-svg').selectAll('.tl-per-bar')
+    .classed('pc-glow-bar', false).classed('pc-dim', false)
+    .attr('fill-opacity', d => d && d.dy ? 0.45 : 0.72);
+}
 
 function findPerson(name) {
   return people.find(p => p.name === name) || null;
